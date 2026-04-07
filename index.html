@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Core System - Container Management</title>
+    <script src="https://alcdn.msauth.net/browser/2.28.1/js/msal-browser.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --primary: #1a1a2e;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-amber: #f59e0b;
+            --accent-purple: #8b5cf6;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --text-secondary: #64748b;
+            --sidebar-width: 260px;
+        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); }
+        .login-screen { display: flex; align-items: center; justify-content: center; height: 100vh; background: linear-gradient(135deg, var(--primary), #0f3460); }
+        .login-card { background: white; border-radius: 16px; padding: 48px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 420px; width: 90%; }
+        .login-card h1 { font-size: 28px; margin-bottom: 8px; color: var(--primary); }
+        .login-card p { color: var(--text-secondary); margin-bottom: 32px; }
+        .login-card .logo { font-size: 48px; margin-bottom: 16px; }
+        .btn-login { background: var(--accent-blue); color: white; border: none; padding: 14px 32px; border-radius: 8px; font-size: 16px; cursor: pointer; width: 100%; font-weight: 600; }
+        .btn-login:hover { background: #2563eb; }
+        .login-status { margin-top: 16px; color: var(--text-secondary); font-size: 14px; }
+        .app-layout { display: none; height: 100vh; }
+        .app-layout.active { display: flex; }
+        .topbar { position: fixed; top: 0; left: var(--sidebar-width); right: 0; height: 64px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 16px; z-index: 100; }
+        .topbar-search { flex: 1; max-width: 400px; position: relative; }
+        .topbar-search input { width: 100%; padding: 10px 16px 10px 40px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--bg); }
+        .topbar-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); }
+        .topbar-actions { display: flex; gap: 8px; margin-left: auto; align-items: center; }
+        .btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: white; color: var(--text); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+        .btn:hover { background: var(--bg); }
+        .btn-primary { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+        .btn-primary:hover { background: #2563eb; }
+        .user-badge { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 8px; background: var(--bg); font-size: 13px; font-weight: 500; }
+        .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: #0f3460; color: white; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 600; }
+        .lang-select { padding: 6px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: white; cursor: pointer; }
+        .sidebar { width: var(--sidebar-width); background: var(--primary); color: white; height: 100vh; position: fixed; left: 0; top: 0; display: flex; flex-direction: column; z-index: 200; }
+        .sidebar-header { padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-header h2 { font-size: 20px; font-weight: 700; }
+        .sidebar-header small { color: rgba(255,255,255,0.5); font-size: 12px; }
+        .sidebar-nav { flex: 1; padding: 12px; }
+        .nav-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px; color: rgba(255,255,255,0.7); cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.15s; margin-bottom: 2px; }
+        .nav-item:hover { background: rgba(255,255,255,0.08); color: white; }
+        .nav-item.active { background: var(--accent-blue); color: white; }
+        .nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+        .sidebar-footer { padding: 16px; border-top: 1px solid rgba(255,255,255,0.1); }
+        .sidebar-footer button { width: 100%; padding: 10px; background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.7); border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .sidebar-footer button:hover { background: rgba(255,255,255,0.15); color: white; }
+        .main-content { margin-left: var(--sidebar-width); margin-top: 64px; padding: 24px; min-height: calc(100vh - 64px); }
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .kpi-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .kpi-card .kpi-label { font-size: 13px; color: var(--text-secondary); font-weight: 500; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .kpi-card .kpi-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .kpi-card .kpi-value { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
+        .kpi-card .kpi-sub { font-size: 12px; color: var(--text-secondary); }
+        .data-table { width: 100%; border-collapse: collapse; }
+        .data-table th { text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--border); }
+        .data-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
+        .data-table tr:hover { background: #f1f5f9; cursor: pointer; }
+        .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+        .badge-green { background: #dcfce7; color: #166534; }
+        .badge-red { background: #fee2e2; color: #991b1b; }
+        .badge-amber { background: #fef3c7; color: #92400e; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-purple { background: #ede9fe; color: #5b21b6; }
+        .badge-gray { background: #f1f5f9; color: #475569; }
+        .filters-bar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
+        .filters-bar input, .filters-bar select { padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: white; min-width: 160px; }
+        .filters-bar input { flex: 1; max-width: 300px; }
+        .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .page-header h1 { font-size: 24px; font-weight: 700; }
+        .page-header p { color: var(--text-secondary); font-size: 14px; margin-top: 4px; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 24px; }
+        .tab { padding: 12px 20px; font-size: 14px; font-weight: 500; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+        .tab:hover { color: var(--text); }
+        .tab.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); font-weight: 600; }
+        .timeline-entry { display: flex; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+        .timeline-dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+        .timeline-dot.green { background: var(--accent-green); }
+        .timeline-dot.blue { background: var(--accent-blue); }
+        .timeline-dot.amber { background: var(--accent-amber); }
+        .timeline-dot.red { background: var(--accent-red); }
+        .timeline-content h4 { font-size: 15px; font-weight: 600; }
+        .timeline-content p { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+        .timeline-date { font-size: 18px; font-weight: 700; margin-bottom: 12px; margin-top: 20px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+        .form-group label .req { color: var(--accent-red); }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+        .form-group textarea { min-height: 80px; resize: vertical; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+        .tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .tag { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; font-size: 13px; }
+        .loading { display: flex; align-items: center; justify-content: center; padding: 60px; color: var(--text-secondary); }
+        .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent-blue); border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .toast-container { position: fixed; top: 80px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+        .toast { padding: 14px 20px; border-radius: 8px; color: white; font-size: 14px; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.3s ease; min-width: 280px; }
+        .toast-success { background: var(--accent-green); }
+        .toast-error { background: var(--accent-red); }
+        .toast-info { background: var(--accent-blue); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .empty-state { text-align: center; padding: 40px; color: var(--text-secondary); }
+        .container-number { font-weight: 600; color: var(--accent-blue); }
+        .role-badge { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .role-admin { background: #dcfce7; color: #166534; }
+        .role-viewer { background: #dbeafe; color: #1e40af; }
+        .view-only-banner { background: #dbeafe; color: #1e40af; padding: 10px 20px; text-align: center; font-size: 13px; font-weight: 500; border-bottom: 1px solid #93c5fd; }
+        .hidden { display: none !important; }
+        @media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+        @media (max-width: 768px) {
+            .sidebar { width: 60px; } .sidebar-header h2, .sidebar-header small, .nav-item span { display: none; }
+            .main-content, .topbar { margin-left: 60px; left: 60px; }
+            .kpi-grid { grid-template-columns: 1fr; } .two-col, .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div id="loginScreen" class="login-screen">
+    <div class="login-card">
+        <div class="logo">&#9881;</div>
+        <h1>CORE SYSTEM</h1>
+        <p>Container Management &mdash; NJ Container Offshore Services</p>
+        <button class="btn-login" onclick="signIn()">Sign in with Microsoft</button>
+        <div class="login-status" id="loginStatus"></div>
+    </div>
+</div>
+<div class="toast-container" id="toastContainer"></div>
+<div class="view-only-banner hidden" id="viewOnlyBanner">&#128274; View-only mode &mdash; You are logged in as a Viewer. Contact an admin for write access.</div>
+<div class="app-layout" id="appLayout">
+    <nav class="sidebar">
+        <div class="sidebar-header"><h2>&#9881; CORE SYSTEM</h2><small>Container Management</small></div>
+        <div class="sidebar-nav">
+            <div class="nav-item active" data-page="dashboard" onclick="nav('dashboard')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span>Dashboard</span></div>
+            <div class="nav-item" data-page="containers" onclick="nav('containers')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="6" width="22" height="12" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><span>Containers</span></div>
+            <div class="nav-item" data-page="certificates" onclick="nav('certificates')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span>Certificates</span></div>
+            <div class="nav-item" data-page="tasks" onclick="nav('tasks')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span>Tasks</span></div>
+            <div class="nav-item" data-page="timeline" onclick="nav('timeline')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span>Timeline</span></div>
+            <div class="nav-item admin-only" data-page="admin" onclick="nav('admin')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09c-.658.003-1.25.396-1.51 1z"/></svg><span>Administration</span></div>
+        </div>
+        <div class="sidebar-footer"><button onclick="signOut()">Sign Out</button></div>
+    </nav>
+    <div class="topbar">
+        <div class="topbar-search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search by container number..." id="globalSearch" onkeyup="if(event.key==='Enter')doGlobalSearch()"></div>
+        <div class="topbar-actions">
+            <select class="lang-select" onchange="lang=this.value;render()"><option value="en">English</option><option value="da">Dansk</option></select>
+            <button class="btn btn-primary admin-only" onclick="nav('new-cert')">+ New Certificate</button>
+            <button class="btn btn-primary admin-only" onclick="nav('new-entry')">+ New Entry</button>
+            <div class="user-badge"><div class="user-avatar" id="userAvatar">?</div><span id="userName">User</span><span id="userRoleBadge" class="role-badge" style="margin-left:4px;"></span></div>
+        </div>
+    </div>
+    <main class="main-content" id="page"></main>
+</div>
+
+<script>
+// === CONFIG ===
+const MSAL_CFG = { auth: { clientId:'5ba644e5-fc21-4305-ae9b-83cdc45a89a8', authority:'https://login.microsoftonline.com/4aeeed86-5b8d-4dc3-9f21-189804e8ef43', redirectUri: location.href.split('?')[0].split('#')[0] }, cache: { cacheLocation:'localStorage' } };
+const SCOPES = ['User.Read','Sites.Read.All'];
+const SP_HOST = 'njcontaineroffshoreservi304.sharepoint.com', SP_PATH = '/sites/common';
+
+// === RBAC: Add admin emails here. Anyone not listed is a Viewer (read-only). ===
+const ADMIN_EMAILS = [
+    'op@njco.dk',
+    // Add more admin emails below:
+    // 'admin@njco.dk',
+];
+
+let msal_app, account, siteId, page='dashboard', lang='en', selUnit=null;
+let userRole = 'viewer'; // 'admin' or 'viewer'
+let D = { truck:[], certs:[], clients:[] };
+
+// === i18n ===
+const L = {
+    en:{dashboard:'Dashboard',containers:'Containers',certificates:'Certificates',tasks:'Tasks',timeline:'Timeline',admin:'Administration',search:'Search...',date:'Date',who:'Who',unitId:'Unit ID',carrier:'Carrier',customer:'Customer',service:'Service',comment:'Comment',status:'Status',bookkeeping:'Bookkeeping',inOut:'In/Out',certNo:'Cert No.',client:'Client',type:'Type',allTypes:'All Types',allStatuses:'All Statuses',exportExcel:'Export CSV',addNew:'+ Add New',back:'Back',noData:'No data available',loading:'Loading from SharePoint...',approved:'Approved',invoiceNo:'Invoice No.',inspType:'Inspection Type'},
+    da:{dashboard:'Dashboard',containers:'Containere',certificates:'Certifikater',tasks:'Opgaver',timeline:'Tidslinje',admin:'Administration',search:'Søg...',date:'Dato',who:'Hvem',unitId:'Enhed ID',carrier:'Vognmand',customer:'Kunde',service:'Service',comment:'Kommentar',status:'Status',bookkeeping:'Bogholderi',inOut:'Ind/Ud',certNo:'Cert Nr.',client:'Klient',type:'Type',allTypes:'Alle Typer',allStatuses:'Alle Statusser',exportExcel:'Eksporter CSV',addNew:'+ Tilføj Ny',back:'Tilbage',noData:'Ingen data',loading:'Indlæser fra SharePoint...',approved:'Godkendt',invoiceNo:'Faktura Nr.',inspType:'Inspektionstype'}
+};
+const t = k => (L[lang]||L.en)[k]||k;
+
+// === AUTH ===
+async function initAuth() {
+    try {
+        msal_app = new msal.PublicClientApplication(MSAL_CFG);
+        await msal_app.initialize();
+        const r = await msal_app.handleRedirectPromise();
+        if (r) account = r.account;
+        else { const a = msal_app.getAllAccounts(); if (a.length) account = a[0]; }
+        if (account) await onAuth();
+    } catch(e) { document.getElementById('loginStatus').textContent = 'Error: '+e.message; }
+}
+async function signIn() { document.getElementById('loginStatus').textContent='Signing in...'; await msal_app.loginRedirect({scopes:SCOPES}); }
+function signOut() { msal_app.logoutRedirect(); }
+async function getToken() {
+    try { return (await msal_app.acquireTokenSilent({scopes:SCOPES,account})).accessToken; }
+    catch(e) { if(e instanceof msal.InteractionRequiredAuthError) await msal_app.acquireTokenRedirect({scopes:SCOPES}); throw e; }
+}
+async function onAuth() {
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('appLayout').classList.add('active');
+    const n = account.name||account.username;
+    const email = (account.username||'').toLowerCase();
+    userRole = ADMIN_EMAILS.some(e => e.toLowerCase() === email) ? 'admin' : 'viewer';
+    document.getElementById('userName').textContent = n;
+    document.getElementById('userAvatar').textContent = n.split(' ').map(x=>x[0]).join('').substring(0,2).toUpperCase();
+    document.getElementById('userRoleBadge').textContent = userRole === 'admin' ? 'Admin' : 'Viewer';
+    document.getElementById('userRoleBadge').className = 'role-badge ' + (userRole === 'admin' ? 'role-admin' : 'role-viewer');
+    // Hide write buttons and admin nav for viewers
+    document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', userRole !== 'admin'));
+    if (userRole === 'viewer') {
+        document.getElementById('viewOnlyBanner').classList.remove('hidden');
+    }
+    await loadData();
+    render();
+}
+function isAdmin() { return userRole === 'admin'; }
+
+// === GRAPH API ===
+async function gGet(url) {
+    const tk = await getToken();
+    const r = await fetch(url,{headers:{'Authorization':'Bearer '+tk,'Accept':'application/json'}});
+    if(!r.ok) throw new Error('Graph '+r.status+' '+r.statusText);
+    return r.json();
+}
+const WRITE_SCOPES = ['User.Read','Sites.ReadWrite.All'];
+async function getWriteToken() {
+    try { return (await msal_app.acquireTokenSilent({scopes:WRITE_SCOPES,account})).accessToken; }
+    catch(e) { if(e instanceof msal.InteractionRequiredAuthError) { await msal_app.acquireTokenRedirect({scopes:WRITE_SCOPES}); } throw e; }
+}
+async function gPost(url,body) {
+    const tk = await getWriteToken();
+    const r = await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+tk,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok) { const t = await r.text(); throw new Error('Graph '+r.status+': '+t); }
+    return r.json();
+}
+async function getSite() { if(siteId) return siteId; const d = await gGet(`https://graph.microsoft.com/v1.0/sites/${SP_HOST}:${SP_PATH}`); siteId=d.id; return siteId; }
+async function getList(name) {
+    const s = await getSite(); let url=`https://graph.microsoft.com/v1.0/sites/${s}/lists/${name}/items?$expand=fields&$top=500`, all=[];
+    while(url) { const d = await gGet(url); all=all.concat(d.value||[]); url=d['@odata.nextLink']||null; }
+    return all;
+}
+async function addItem(list,fields) { const s=await getSite(); return gPost(`https://graph.microsoft.com/v1.0/sites/${s}/lists/${list}/items`,{fields}); }
+
+// === DATA ===
+async function loadData() {
+    document.getElementById('page').innerHTML = `<div class="loading"><div class="spinner"></div>${t('loading')}</div>`;
+    try {
+        const [a,b,c] = await Promise.all([
+            getList('Truckliste').catch(e=>(console.warn(e),[])),
+            getList('Certifikatnumre').catch(e=>(console.warn(e),[])),
+            getList('Clients').catch(e=>(console.warn(e),[]))
+        ]);
+        D.truck = a.map(i=>({id:i.id,...i.fields}));
+        D.certs = b.map(i=>({id:i.id,...i.fields}));
+        D.clients = c.map(i=>({id:i.id,...i.fields}));
+        toast(`Loaded ${D.truck.length} entries, ${D.certs.length} certificates, ${D.clients.length} clients`,'success');
+    } catch(e) { toast('Load error: '+e.message,'error'); }
+}
+
+// === NAV ===
+function nav(p,d) { if(!isAdmin()&&(p==='new-entry'||p==='new-cert'||p==='admin')){toast('Access denied — admin only','error');return;} page=p; if(d) selUnit=d; document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===p||(p==='detail'&&n.dataset.page==='containers'))); render(); window.scrollTo(0,0); }
+function render() { const el=document.getElementById('page'); el.innerHTML=({dashboard:rDash,containers:rContainers,detail:rDetail,certificates:rCerts,tasks:rTasks,timeline:rTimeline,admin:rAdmin,'new-entry':rNewEntry,'new-cert':rNewCert}[page]||rDash)(); }
+
+// === HELPERS ===
+function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
+function fmtDate(s){if(!s)return'-';try{const d=new Date(s);return isNaN(d)?esc(s):d.toLocaleDateString('da-DK');}catch{return esc(s);}}
+function exName(v){if(!v)return'-';if(typeof v==='object'&&v.LookupValue)return v.LookupValue;const s=String(v);if(s.includes(';#')){const p=s.split(';#').filter(x=>x&&isNaN(x));return p.join(', ')||s;}return s;}
+function svcColor(s){if(!s)return'gray';const l=s.toLowerCase();if(l.includes('repe'))return'red';if(l.includes('offhire'))return'amber';if(l.includes('vask'))return'blue';if(l.includes('inspek'))return'purple';return'gray';}
+function toast(m,type){const c=document.getElementById('toastContainer'),t=document.createElement('div');t.className='toast toast-'+type;t.textContent=m;c.appendChild(t);setTimeout(()=>t.remove(),4000);}
+function doGlobalSearch(){const q=(document.getElementById('globalSearch').value||'').toUpperCase();if(!q)return;const f=D.truck.find(e=>(e.Unit_x0020_id||'').toUpperCase().includes(q)||(e.Unit_x0020_id1||'').toUpperCase().includes(q));if(f)nav('detail',f.Unit_x0020_id||f.Unit_x0020_id1);else toast('Not found: '+q,'info');}
+function exportCSV(data,fn){if(!data.length){toast('No data','info');return;}const ks=Object.keys(data[0]).filter(k=>!k.startsWith('@')&&!k.startsWith('odata')&&k!=='id');const csv=[ks.join(','),...data.map(r=>ks.map(k=>`"${String(r[k]||'').replace(/"/g,'""')}"`).join(','))].join('\n');const b=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const l=document.createElement('a');l.href=URL.createObjectURL(b);l.download=fn;l.click();toast('Exported '+data.length+' rows','success');}
+
+// === DASHBOARD ===
+function rDash() {
+    const uids = new Set(D.truck.filter(e=>e.Unit_x0020_id).map(e=>(e.Unit_x0020_id||'').toUpperCase()));
+    const open = D.truck.filter(e=>e.Status!=='Lukket').length;
+    const recent = D.truck.slice(-10).reverse();
+    const rcerts = D.certs.slice(-5).reverse();
+    return `<div class="page-header"><div><h1>${t('dashboard')}</h1><p>Overview of container management system</p></div></div>
+    <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">${t('containers')} <div class="kpi-icon" style="background:#dcfce7;color:#166534;">&#9744;</div></div><div class="kpi-value">${uids.size}</div><div class="kpi-sub">Unique unit IDs</div></div>
+        <div class="kpi-card"><div class="kpi-label">Total Entries <div class="kpi-icon" style="background:#dbeafe;color:#1e40af;">&#9998;</div></div><div class="kpi-value">${D.truck.length}</div><div class="kpi-sub">Movements recorded</div></div>
+        <div class="kpi-card"><div class="kpi-label">Open Items <div class="kpi-icon" style="background:#fef3c7;color:#92400e;">&#9888;</div></div><div class="kpi-value">${open}</div><div class="kpi-sub">Requires attention</div></div>
+        <div class="kpi-card"><div class="kpi-label">${t('certificates')} <div class="kpi-icon" style="background:#ede9fe;color:#5b21b6;">&#9873;</div></div><div class="kpi-value">${D.certs.length}</div><div class="kpi-sub">Certificates issued</div></div>
+    </div>
+    <div class="two-col">
+        <div class="card"><div class="card-header"><h3>Recent Activity</h3></div>
+        ${recent.length?`<table class="data-table"><thead><tr><th>${t('date')}</th><th>${t('unitId')}</th><th>${t('who')}</th><th>${t('service')}</th><th>${t('status')}</th></tr></thead><tbody>
+        ${recent.map(e=>`<tr onclick="nav('detail','${esc(e.Unit_x0020_id||e.Unit_x0020_id1||'')}')"><td>${fmtDate(e.Dato)}</td><td class="container-number">${esc(e.Unit_x0020_id||e.Unit_x0020_id1||'-')}</td><td>${esc(exName(e.Hvem))}</td><td>${e.Service?`<span class="badge badge-${svcColor(e.Service)}">${esc(e.Service)}</span>`:'-'}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table>`:`<div class="empty-state">${t('noData')}</div>`}
+        </div>
+        <div class="card"><div class="card-header"><h3>Recent Certificates</h3></div>
+        ${rcerts.length?`<table class="data-table"><thead><tr><th>${t('certNo')}</th><th>${t('unitId')}</th><th>${t('client')}</th><th>${t('who')}</th></tr></thead><tbody>
+        ${rcerts.map(c=>`<tr><td class="container-number">${esc(c.Title||'-')}</td><td>${esc(c.Unit_x0020_id||c.Unit_x0020_id1||'-')}</td><td>${esc(exName(c.Client))}</td><td>${esc(exName(c.Hvem))}</td></tr>`).join('')}</tbody></table>`:`<div class="empty-state">${t('noData')}</div>`}
+        </div>
+    </div>`;
+}
+
+// === CONTAINERS ===
+function rContainers() {
+    const svcs=[...new Set(D.truck.map(e=>e.Service).filter(Boolean))];
+    const stats=[...new Set(D.truck.map(e=>e.Status).filter(Boolean))];
+    return `<div class="page-header"><div><h1>${t('containers')}</h1><p>${D.truck.length} entries</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.truck,'trucklist.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-entry')">${t('addNew')}</button>`:''}</div></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="cSearch" onkeyup="fltC()"><select id="fSvc" onchange="fltC()"><option value="">${t('allTypes')}</option>${svcs.map(s=>`<option>${esc(s)}</option>`).join('')}</select><select id="fStat" onchange="fltC()"><option value="">${t('allStatuses')}</option>${stats.map(s=>`<option>${esc(s)}</option>`).join('')}</select></div><div id="cTbl">${cTbl(D.truck)}</div></div>`;
+}
+function cTbl(data) {
+    if(!data.length) return `<div class="empty-state">${t('noData')}</div>`;
+    return `<table class="data-table"><thead><tr><th>${t('date')}</th><th>${t('inOut')}</th><th>${t('unitId')}</th><th>Unit ID 1</th><th>${t('carrier')}</th><th>${t('customer')}</th><th>${t('service')}</th><th>${t('who')}</th><th>${t('bookkeeping')}</th><th>${t('status')}</th></tr></thead><tbody>
+    ${data.slice().reverse().map(e=>`<tr onclick="nav('detail','${esc(e.Unit_x0020_id||e.Unit_x0020_id1||'')}')"><td>${fmtDate(e.Dato)}</td><td>${e.Ind_x002f_ud==1?'<span class="badge badge-green">IN</span>':e.Ind_x002f_ud=='0'||e.Ind_x002f_ud==0?'<span class="badge badge-amber">OUT</span>':'<span class="badge badge-gray">'+esc(String(e.Ind_x002f_ud||'-'))+'</span>'}</td><td class="container-number">${esc(e.Unit_x0020_id||'-')}</td><td>${esc(e.Unit_x0020_id1||'-')}</td><td>${esc(exName(e.Vognmand))}</td><td>${esc(e.Kunde||'-')}</td><td>${e.Service?`<span class="badge badge-${svcColor(e.Service)}">${esc(e.Service)}</span>`:'-'}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(e.Bogholderi_x0020_kommentar||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table>`;
+}
+function fltC() {
+    const q=(document.getElementById('cSearch').value||'').toLowerCase(), svc=document.getElementById('fSvc').value, st=document.getElementById('fStat').value;
+    document.getElementById('cTbl').innerHTML=cTbl(D.truck.filter(e=>{if(q&&!JSON.stringify(e).toLowerCase().includes(q))return false;if(svc&&e.Service!==svc)return false;if(st&&e.Status!==st)return false;return true;}));
+}
+
+// === DETAIL ===
+function rDetail() {
+    const u=selUnit, entries=D.truck.filter(e=>(e.Unit_x0020_id||'').toUpperCase()===u.toUpperCase()||(e.Unit_x0020_id1||'').toUpperCase()===u.toUpperCase());
+    const certs=D.certs.filter(c=>(c.Unit_x0020_id||'').toUpperCase()===u.toUpperCase()||(c.Unit_x0020_id1||'').toUpperCase()===u.toUpperCase());
+    const last=entries[entries.length-1]||{};
+    return `<button class="btn" onclick="nav('containers')" style="margin-bottom:16px;">&#8592; ${t('back')}</button>
+    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:24px;"><div><h1 style="font-size:24px;">${esc(u)}</h1><p style="color:var(--text-secondary);margin-top:4px;">${last.Kunde?'Customer: '+esc(last.Kunde):''} ${last.Vognmand?'&middot; Carrier: '+esc(exName(last.Vognmand)):''}</p></div><span class="badge ${last.Status==='Lukket'?'badge-green':'badge-amber'}" style="font-size:14px;padding:8px 16px;">${esc(last.Status||'Active')}</span></div>
+    <div class="tabs"><div class="tab active" onclick="showTab('ov')">Movements (${entries.length})</div><div class="tab" onclick="showTab('ce')">Certificates (${certs.length})</div></div>
+    <div id="dtab">${dtOv(entries)}</div>`;
+}
+function showTab(t){document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',(t==='ov'&&i===0)||(t==='ce'&&i===1)));const u=selUnit;document.getElementById('dtab').innerHTML=t==='ov'?dtOv(D.truck.filter(e=>(e.Unit_x0020_id||'').toUpperCase()===u.toUpperCase()||(e.Unit_x0020_id1||'').toUpperCase()===u.toUpperCase())):dtCe(D.certs.filter(c=>(c.Unit_x0020_id||'').toUpperCase()===u.toUpperCase()||(c.Unit_x0020_id1||'').toUpperCase()===u.toUpperCase()));}
+function dtOv(entries){return `<div class="card"><h3 style="margin-bottom:16px;">Movement History</h3><table class="data-table"><thead><tr><th>${t('date')}</th><th>${t('inOut')}</th><th>${t('who')}</th><th>${t('carrier')}</th><th>${t('service')}</th><th>${t('comment')}</th><th>${t('bookkeeping')}</th><th>${t('status')}</th></tr></thead><tbody>${entries.slice().reverse().map(e=>`<tr><td>${fmtDate(e.Dato)}</td><td>${e.Ind_x002f_ud==1?'<span class="badge badge-green">IN</span>':'<span class="badge badge-amber">OUT</span>'}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(exName(e.Vognmand))}</td><td>${e.Service?`<span class="badge badge-${svcColor(e.Service)}">${esc(e.Service)}</span>`:'-'}</td><td>${esc(e.Kommentar||'-')}</td><td>${esc(e.Bogholderi_x0020_kommentar||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'-')}</span></td></tr>`).join('')}</tbody></table></div>`;}
+function dtCe(certs){if(!certs.length)return`<div class="card"><div class="empty-state">No certificates for this unit.</div></div>`;return`<div class="card"><h3 style="margin-bottom:16px;">Certificates</h3><table class="data-table"><thead><tr><th>Title</th><th>Cert Nr</th><th>${t('client')}</th><th>${t('type')}</th><th>${t('who')}</th><th>${t('approved')}</th></tr></thead><tbody>${certs.map(c=>`<tr><td class="container-number">${esc(c.Title||'-')}</td><td>${esc(c.Certnr||'-')}</td><td>${esc(exName(c.Client))}</td><td>${esc(c.Type1||'-')}</td><td>${esc(exName(c.Hvem))}</td><td>${c.Godkendt?'<span class="badge badge-green">&#10003;</span>':'<span class="badge badge-gray">-</span>'}</td></tr>`).join('')}</tbody></table></div>`;}
+
+// === CERTIFICATES ===
+function rCerts(){
+    const cls=[...new Set(D.certs.map(c=>exName(c.Client)).filter(x=>x&&x!=='-'))];
+    return `<div class="page-header"><div><h1>${t('certificates')}</h1><p>${D.certs.length} certificates</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.certs,'certificates.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-cert')">${t('addNew')}</button>`:''}</div></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="ceSearch" onkeyup="fltCe()"><select id="fCeClient" onchange="fltCe()"><option value="">All Clients</option>${cls.map(c=>`<option>${esc(c)}</option>`).join('')}</select></div><div id="ceTbl">${ceTbl(D.certs)}</div></div>`;
+}
+function ceTbl(data){if(!data.length)return`<div class="empty-state">${t('noData')}</div>`;return`<table class="data-table"><thead><tr><th>Title</th><th>Cert Nr</th><th>${t('client')}</th><th>${t('unitId')}</th><th>CSC</th><th>${t('inspType')}</th><th>${t('who')}</th><th>${t('invoiceNo')}</th><th>${t('approved')}</th></tr></thead><tbody>${data.slice().reverse().map(c=>`<tr onclick="nav('detail','${esc(c.Unit_x0020_id||c.Unit_x0020_id1||'')}')"><td class="container-number">${esc(c.Title||'-')}</td><td>${esc(c.Certnr||'-')}</td><td>${esc(exName(c.Client))}</td><td>${esc(c.Unit_x0020_id||c.Unit_x0020_id1||'-')}</td><td>${esc(c.CSC||'-')}</td><td>${esc(c.Inspektionstype||'-')}</td><td>${esc(exName(c.Hvem))}</td><td>${esc(c.Faktura_x0020_nr_x002e_||'-')}</td><td>${c.Godkendt?'<span class="badge badge-green">&#10003;</span>':'<span class="badge badge-gray">-</span>'}</td></tr>`).join('')}</tbody></table>`;}
+function fltCe(){const q=(document.getElementById('ceSearch').value||'').toLowerCase(),cl=document.getElementById('fCeClient').value;document.getElementById('ceTbl').innerHTML=ceTbl(D.certs.filter(c=>{if(q&&!JSON.stringify(c).toLowerCase().includes(q))return false;if(cl&&exName(c.Client)!==cl)return false;return true;}));}
+
+// === TASKS ===
+function rTasks(){
+    const tasks=D.truck.filter(e=>e.Service);const svcs=[...new Set(tasks.map(e=>e.Service).filter(Boolean))];
+    return `<div class="page-header"><div><h1>${t('tasks')}</h1><p>${tasks.length} service tasks</p></div><button class="btn" onclick="exportCSV(tasks,'tasks.csv')">&#8681; ${t('exportExcel')}</button></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="tSearch" onkeyup="fltT()"><select id="fTSvc" onchange="fltT()"><option value="">${t('allTypes')}</option>${svcs.map(s=>`<option>${esc(s)}</option>`).join('')}</select></div><div id="tTbl">${tTbl(tasks)}</div></div>`;
+}
+function tTbl(data){if(!data.length)return`<div class="empty-state">${t('noData')}</div>`;return`<table class="data-table"><thead><tr><th>${t('date')}</th><th>${t('unitId')}</th><th>${t('service')}</th><th>${t('customer')}</th><th>${t('who')}</th><th>${t('comment')}</th><th>${t('status')}</th></tr></thead><tbody>${data.slice().reverse().map(e=>`<tr onclick="nav('detail','${esc(e.Unit_x0020_id||e.Unit_x0020_id1||'')}')"><td>${fmtDate(e.Dato)}</td><td class="container-number">${esc(e.Unit_x0020_id||e.Unit_x0020_id1||'-')}</td><td><span class="badge badge-${svcColor(e.Service)}">${esc(e.Service)}</span></td><td>${esc(e.Kunde||'-')}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(e.Kommentar||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table>`;}
+function fltT(){const q=(document.getElementById('tSearch').value||'').toLowerCase(),svc=document.getElementById('fTSvc').value;document.getElementById('tTbl').innerHTML=tTbl(D.truck.filter(e=>{if(!e.Service)return false;if(q&&!JSON.stringify(e).toLowerCase().includes(q))return false;if(svc&&e.Service!==svc)return false;return true;}));}
+
+// === TIMELINE ===
+function rTimeline(){
+    const all=[...D.truck.map(e=>({t:'truck',d:e.Dato,data:e})),...D.certs.map(c=>({t:'cert',d:c.Created||c.Dato,data:c}))].sort((a,b)=>new Date(b.d||0)-new Date(a.d||0)).slice(0,50);
+    const grp={};all.forEach(i=>{const k=fmtDate(i.d);if(!grp[k])grp[k]=[];grp[k].push(i);});
+    return `<div class="page-header"><div><h1>${t('timeline')}</h1><p>Event history across all containers</p></div></div><div class="card">
+    ${Object.entries(grp).map(([d,items])=>`<div class="timeline-date">&#128197; ${d}</div>${items.map(i=>{if(i.t==='truck'){const e=i.data;return`<div class="timeline-entry"><div class="timeline-dot ${e.Ind_x002f_ud==1?'green':'amber'}"></div><div class="timeline-content"><h4>${e.Ind_x002f_ud==1?'Container In':'Container Out'} &mdash; ${esc(e.Unit_x0020_id||e.Unit_x0020_id1||'-')}</h4><p>${esc(exName(e.Hvem))} ${e.Service?'&middot; '+esc(e.Service):''} ${e.Kunde?'&middot; '+esc(e.Kunde):''}</p>${e.Kommentar?`<p style="font-style:italic;margin-top:4px;">${esc(e.Kommentar)}</p>`:''}</div><span class="badge badge-${svcColor(e.Service)}" style="margin-left:auto;">${esc(e.Service||'Movement')}</span></div>`;}else{const c=i.data;return`<div class="timeline-entry"><div class="timeline-dot blue"></div><div class="timeline-content"><h4>Certificate: ${esc(c.Title||'-')}</h4><p>${esc(c.Unit_x0020_id||c.Unit_x0020_id1||'-')} &middot; ${esc(exName(c.Client))} &middot; ${esc(exName(c.Hvem))}</p></div><span class="badge badge-blue" style="margin-left:auto;">Certificate</span></div>`;}}).join('')}`).join('')}</div>`;
+}
+
+// === ADMIN ===
+function rAdmin(){
+    const svcs=[...new Set(D.truck.map(e=>e.Service).filter(Boolean))];
+    const stats=[...new Set(D.truck.map(e=>e.Status).filter(Boolean))];
+    const carriers=[...new Set(D.truck.map(e=>exName(e.Vognmand)).filter(x=>x&&x!=='-'))];
+    return `<div class="page-header"><div><h1>${t('admin')}</h1><p>System administration and data overview</p></div><button class="btn btn-primary" onclick="loadData().then(render)">&#8635; Refresh Data</button></div>
+    <div class="two-col">
+        <div class="card"><h3>Service Types</h3><p style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;">From Truckliste</p><div class="tag-list">${svcs.map(s=>`<div class="tag">${esc(s)}</div>`).join('')}</div></div>
+        <div class="card"><h3>Statuses</h3><p style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;">Currently in use</p><div class="tag-list">${stats.map(s=>`<div class="tag">${esc(s)}</div>`).join('')}</div></div>
+        <div class="card"><h3>Carriers (Vognm&aelig;nd)</h3><div class="tag-list">${carriers.map(c=>`<div class="tag">${esc(c)}</div>`).join('')}</div></div>
+        <div class="card"><h3>Clients</h3><div class="tag-list">${D.clients.map(c=>`<div class="tag">${esc(c.Title||c.Client_x0020_name||'-')}</div>`).join('')}</div></div>
+    </div>
+    <div class="card" style="margin-top:24px;"><h3 style="margin-bottom:12px;">Data Sources</h3><table class="data-table"><thead><tr><th>List</th><th>Items</th><th>Link</th></tr></thead><tbody>
+        <tr><td><strong>Truckliste</strong></td><td>${D.truck.length}</td><td><a href="https://${SP_HOST}${SP_PATH}/Lists/Truckliste" target="_blank">Open in SharePoint</a></td></tr>
+        <tr><td><strong>Certifikatnumre</strong></td><td>${D.certs.length}</td><td><a href="https://${SP_HOST}${SP_PATH}/Lists/Certifikatnumre" target="_blank">Open in SharePoint</a></td></tr>
+        <tr><td><strong>Clients</strong></td><td>${D.clients.length}</td><td><a href="https://${SP_HOST}${SP_PATH}/Lists/Clients" target="_blank">Open in SharePoint</a></td></tr>
+    </tbody></table></div>`;
+}
+
+// === FORMS ===
+function rNewEntry(){
+    return `<button class="btn" onclick="nav('containers')" style="margin-bottom:16px;">&#8592; ${t('back')}</button>
+    <div class="card" style="max-width:800px;"><h2 style="margin-bottom:8px;">New Trucklist Entry</h2><p style="color:var(--text-secondary);margin-bottom:24px;">Register a container movement</p>
+    <div class="form-row"><div class="form-group"><label>Unit ID <span class="req">*</span></label><input id="nUid" placeholder="e.g. CLDU 962609-7"></div><div class="form-group"><label>Unit ID 1</label><input id="nUid1" placeholder="Description"></div></div>
+    <div class="form-row"><div class="form-group"><label>In/Out <span class="req">*</span></label><select id="nIO"><option value="1">In (1)</option><option value="0">Out (0)</option></select></div><div class="form-group"><label>Customer</label><input id="nKunde" placeholder="Customer name"></div></div>
+    <div class="form-row"><div class="form-group"><label>Service</label><select id="nSvc"><option value="">None</option><option>Reperation</option><option>Offhire</option><option>Vaskes</option><option>Inspektion</option></select></div><div class="form-group"><label>Status</label><select id="nStat"><option value="Lukket">Lukket</option><option value="">Open</option></select></div></div>
+    <div class="form-group"><label>Comment</label><textarea id="nCom" placeholder="Add a comment..."></textarea></div>
+    <div class="form-group"><label>Bookkeeping Ref</label><input id="nBook" placeholder="e.g. 21938"></div>
+    <div class="form-actions"><button class="btn" onclick="nav('containers')">Cancel</button><button class="btn btn-primary" onclick="submitEntry()">Create Entry</button></div></div>`;
+}
+async function submitEntry(){
+    const uid=document.getElementById('nUid').value;if(!uid){toast('Unit ID required','error');return;}
+    try{toast('Creating...','info');await addItem('Truckliste',{Unit_x0020_id:uid,Unit_x0020_id1:document.getElementById('nUid1').value,Ind_x002f_ud:document.getElementById('nIO').value,Kunde:document.getElementById('nKunde').value,Service:document.getElementById('nSvc').value,Status:document.getElementById('nStat').value,Kommentar:document.getElementById('nCom').value,Bogholderi_x0020_kommentar:document.getElementById('nBook').value});toast('Entry created!','success');await loadData();nav('containers');}catch(e){toast('Error: '+e.message,'error');}
+}
+function rNewCert(){
+    return `<button class="btn" onclick="nav('certificates')" style="margin-bottom:16px;">&#8592; ${t('back')}</button>
+    <div class="card" style="max-width:800px;"><h2 style="margin-bottom:8px;">New Certificate</h2><p style="color:var(--text-secondary);margin-bottom:24px;">Register a new certificate</p>
+    <div class="form-row"><div class="form-group"><label>Certificate Number <span class="req">*</span></label><input id="cTitle" placeholder="e.g. NJCO10086"></div><div class="form-group"><label>Cert Nr</label><input id="cNr" placeholder="Reference"></div></div>
+    <div class="form-row"><div class="form-group"><label>Unit ID</label><input id="cUid" placeholder="Container ID"></div><div class="form-group"><label>Unit ID 1</label><input id="cUid1"></div></div>
+    <div class="form-row"><div class="form-group"><label>CSC</label><input id="cCSC"></div><div class="form-group"><label>Inspection Type</label><input id="cInsp" placeholder="Type"></div></div>
+    <div class="form-group"><label>Comment</label><textarea id="cCom"></textarea></div>
+    <div class="form-actions"><button class="btn" onclick="nav('certificates')">Cancel</button><button class="btn btn-primary" onclick="submitCert()">Create Certificate</button></div></div>`;
+}
+async function submitCert(){
+    const title=document.getElementById('cTitle').value;if(!title){toast('Certificate number required','error');return;}
+    try{toast('Creating...','info');await addItem('Certifikatnumre',{Title:title,Certnr:document.getElementById('cNr').value,Unit_x0020_id:document.getElementById('cUid').value,Unit_x0020_id1:document.getElementById('cUid1').value,CSC:document.getElementById('cCSC').value,Inspektionstype:document.getElementById('cInsp').value,Kommentar:document.getElementById('cCom').value});toast('Certificate created!','success');await loadData();nav('certificates');}catch(e){toast('Error: '+e.message,'error');}
+}
+
+// === INIT ===
+window.addEventListener('DOMContentLoaded', initAuth);
+</script>
+</body>
+</html>
