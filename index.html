@@ -67,6 +67,7 @@
         .kpi-card .kpi-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
         .kpi-card .kpi-value { font-size: 32px; font-weight: 700; margin-bottom: 4px; }
         .kpi-card .kpi-sub { font-size: 12px; color: var(--text-secondary); }
+        .table-wrap { overflow-x: auto; max-width: 100%; }
         .data-table { width: 100%; border-collapse: collapse; }
         .data-table th { text-align: left; padding: 12px 16px; font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap; transition: color 0.15s; }
         .data-table th:hover { color: var(--text); }
@@ -162,7 +163,7 @@
         <div class="sidebar-footer"><button onclick="signOut()">Sign Out</button></div>
     </nav>
     <div class="topbar">
-        <div class="topbar-search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search..." id="globalSearch" onkeyup="if(event.key==='Enter')doGlobalSearch()"></div>
+        <div class="topbar-search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search across all data..." id="globalSearch" onkeyup="if(event.key==='Enter')doGlobalSearch()"></div>
         <div class="topbar-actions">
             <select class="lang-select" onchange="lang=this.value;render()"><option value="en">English</option><option value="da">Dansk</option></select>
             <button class="btn btn-primary admin-only" onclick="nav('new-cert')">+ New Inspection</button>
@@ -201,6 +202,7 @@ let userRole = 'viewer';
 let D = { containers: [], certificates: [], tasks: [], loosegear: [], timeline: [], clients: [] };
 let dataLoaded = false;
 let sortState = { containers: { col: 'løbenr.', dir: 1 }, certificates: { col: 'Certifikat nr.', dir: 1 }, tasks: { col: 'Job nr', dir: 1 }, loosegear: { col: 'Certifikat Nr', dir: 1 }, timeline: { col: 'Dato', dir: -1 } };
+let searchState = { cSearch: '', ceSearch: '', tSearch: '', lgSearch: '', tlSearch: '', globalSearch: '' };
 
 // === i18n ===
 const L = {
@@ -286,13 +288,13 @@ async function readExcelSheet(type) {
     const headers = values[0];
     const rows = [];
 
-    // Handle Opgave oversigt special case: row 2 has real headers
-    const headerRowIdx = (type === 'tasks') ? 2 : 1;
-    const dataStartIdx = (type === 'tasks') ? 3 : 2;
+    // Handle Opgave oversigt special case: row 0 = meta-headers, row 1 = real headers, data from row 2
+    const headerRowIdx = (type === 'tasks') ? 1 : 0;
+    const dataStartIdx = (type === 'tasks') ? 2 : 1;
 
-    if (type === 'tasks' && values.length > 2) {
-        // Use row 2 as headers for tasks
-        const realHeaders = values[2];
+    if (type === 'tasks' && values.length > 1) {
+        // Use row 1 (0-indexed) as headers for tasks (row 2 in Excel = real headers)
+        const realHeaders = values[1];
         for (let i = dataStartIdx; i < values.length; i++) {
             if (!values[i] || !values[i][0]) continue; // Skip empty rows
             const row = {};
@@ -302,7 +304,8 @@ async function readExcelSheet(type) {
             rows.push(row);
         }
     } else {
-        for (let i = dataStartIdx; i < values.length; i++) {
+        // For non-tasks sheets: row 0 = headers, data starts at row 1
+        for (let i = 1; i < values.length; i++) {
             if (!values[i] || !values[i][0]) continue;
             const row = {};
             headers.forEach((h, j) => {
@@ -384,7 +387,15 @@ function nav(p,d) {
     render();
     window.scrollTo(0,0);
 }
-function render() { const el=document.getElementById('page'); if(!dataLoaded){el.innerHTML=`<div class="loading"><div class="spinner"></div>${t('loading')}</div>`;return;} el.innerHTML=({dashboard:rDash,containers:rContainers,certificates:rCerts,tasks:rTasks,loosegear:rLoosegear,timeline:rTimeline,admin:rAdmin,'new-entry':rNewEntry,'new-cert':rNewCert,'new-task':rNewTask,'new-loosegear':rNewLoosegear}[page]||rDash)(); }
+function render() {
+    const el=document.getElementById('page');
+    if(!dataLoaded){el.innerHTML=`<div class="loading"><div class="spinner"></div>${t('loading')}</div>`;return;}
+    // Save search values before re-render
+    ['cSearch','ceSearch','tSearch','lgSearch','tlSearch','globalSearch'].forEach(id=>{const inp=document.getElementById(id);if(inp)searchState[id]=inp.value;});
+    el.innerHTML=({dashboard:rDash,containers:rContainers,certificates:rCerts,tasks:rTasks,loosegear:rLoosegear,timeline:rTimeline,admin:rAdmin,'new-entry':rNewEntry,'new-cert':rNewCert,'new-task':rNewTask,'new-loosegear':rNewLoosegear}[page]||rDash)();
+    // Restore search values and focus after re-render
+    ['cSearch','ceSearch','tSearch','lgSearch','tlSearch','globalSearch'].forEach(id=>{const inp=document.getElementById(id);if(inp&&searchState[id]){inp.value=searchState[id];inp.setSelectionRange(inp.value.length,inp.value.length);}});
+}
 
 // === HELPERS ===
 function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
@@ -461,18 +472,23 @@ function doGlobalSearch() {
     const q = (document.getElementById('globalSearch').value || '').toLowerCase();
     if (!q) return;
 
-    // Search in all sheets
-    const results = [
-        ...D.containers.filter(r => JSON.stringify(r).toLowerCase().includes(q)),
-        ...D.certificates.filter(r => JSON.stringify(r).toLowerCase().includes(q)),
-        ...D.tasks.filter(r => JSON.stringify(r).toLowerCase().includes(q)),
-        ...D.loosegear.filter(r => JSON.stringify(r).toLowerCase().includes(q))
-    ];
+    // Count matches per section
+    const cCount = D.containers.filter(r => JSON.stringify(r).toLowerCase().includes(q)).length;
+    const ceCount = D.certificates.filter(r => JSON.stringify(r).toLowerCase().includes(q)).length;
+    const tCount = D.tasks.filter(r => JSON.stringify(r).toLowerCase().includes(q)).length;
+    const lgCount = D.loosegear.filter(r => JSON.stringify(r).toLowerCase().includes(q)).length;
+    const tlCount = D.timeline.filter(r => JSON.stringify(r).toLowerCase().includes(q)).length;
+    const total = cCount + ceCount + tCount + lgCount + tlCount;
 
-    if (results.length > 0) {
-        toast(`Found ${results.length} results`,'info');
-    } else {
-        toast('Not found: '+q,'info');
+    if (total === 0) { toast('No results for: '+q,'info'); return; }
+
+    // Navigate to the section with the most hits and pre-fill its search
+    const best = [{k:'containers',id:'cSearch',n:cCount},{k:'certificates',id:'ceSearch',n:ceCount},{k:'tasks',id:'tSearch',n:tCount},{k:'loosegear',id:'lgSearch',n:lgCount},{k:'timeline',id:'tlSearch',n:tlCount}].sort((a,b)=>b.n-a.n)[0];
+
+    if (best.n > 0) {
+        searchState[best.id] = document.getElementById('globalSearch').value;
+        toast(`Found ${total} results (${cCount} containers, ${ceCount} certs, ${tCount} tasks, ${lgCount} loosegear, ${tlCount} timeline)`,'info');
+        nav(best.k);
     }
 }
 
@@ -489,12 +505,12 @@ function rDash() {
     </div>
     <div class="two-col">
         <div class="card"><div class="card-header"><h3>Recent Activity</h3></div>
-        ${recent.length?`<table class="data-table"><thead><tr><th>${t('date')}</th><th>${t('unitId')}</th><th>${t('who')}</th><th>${t('service')}</th><th>${t('status')}</th></tr></thead><tbody>
-        ${recent.map(e=>`<tr><td>${fmtDate(e.Dato)}</td><td class="container-number">${esc(e.Unitid||'-')}</td><td>${esc(exName(e.Hvem))}</td><td>${svcVal(e.Service)?`<span class="badge badge-${svcColor(e.Service)}">${esc(svcVal(e.Service))}</span>`:'-'}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table>`:`<div class="empty-state">${t('noData')}</div>`}
+        ${recent.length?`<div class="table-wrap"><table class="data-table"><thead><tr><th>${t('date')}</th><th>${t('unitId')}</th><th>${t('who')}</th><th>${t('service')}</th><th>${t('status')}</th></tr></thead><tbody>
+        ${recent.map(e=>`<tr><td>${fmtDate(e.Dato)}</td><td class="container-number">${esc(e.Unitid||'-')}</td><td>${esc(exName(e.Hvem))}</td><td>${svcVal(e.Service)?`<span class="badge badge-${svcColor(e.Service)}">${esc(svcVal(e.Service))}</span>`:'-'}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table></div>`:`<div class="empty-state">${t('noData')}</div>`}
         </div>
         <div class="card"><div class="card-header"><h3>Recent Certificates</h3></div>
-        ${rcerts.length?`<table class="data-table"><thead><tr><th>Cert Nr</th><th>Kunde</th><th>Måned</th></tr></thead><tbody>
-        ${rcerts.map(c=>`<tr><td class="container-number">${esc(c['Certifikat nr.']||'-')}</td><td>${esc(c['Kunde']||'-')}</td><td>${esc(c['Måned']||'-')}</td></tr>`).join('')}</tbody></table>`:`<div class="empty-state">${t('noData')}</div>`}
+        ${rcerts.length?`<div class="table-wrap"><table class="data-table"><thead><tr><th>Cert Nr</th><th>Kunde</th><th>Måned</th></tr></thead><tbody>
+        ${rcerts.map(c=>`<tr><td class="container-number">${esc(c['Certifikat nr.']||'-')}</td><td>${esc(c['Kunde']||'-')}</td><td>${esc(c['Måned']||'-')}</td></tr>`).join('')}</tbody></table></div>`:`<div class="empty-state">${t('noData')}</div>`}
         </div>
     </div>`;
 }
@@ -503,80 +519,80 @@ function rDash() {
 function rContainers() {
     const data = sortData(D.containers, 'containers');
     return `<div class="page-header"><div><h1>${t('containers')}</h1><p>${D.containers.length} entries</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.containers,'containerliste.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-entry')">+ New Container</button>`:''}</div></div>
-    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="cSearch" onkeyup="render()"></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="cSearch" onkeyup="searchState.cSearch=this.value;render()"></div>
     <div id="cTbl">${cTbl(data)}</div></div>`;
 }
 function cTbl(data) {
-    const q = (document.getElementById('cSearch')?.value || '').toLowerCase();
+    const q = (searchState.cSearch || '').toLowerCase();
     const filtered = data.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
 
     if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
-    return `<table class="data-table"><thead><tr>${thSort('containers','løbenr.','No.')}${thSort('containers','Ejerskab','Ownership')}${thSort('containers','Købsdato','Purchase Date')}${thSort('containers','Effekt','Type')}${thSort('containers','Præfix','ID')}${thSort('containers','Firma','Company')}${thSort('containers','Købspris','Purchase Price')}${thSort('containers','Lejer','Lessee')}${thSort('containers','Udlej.dato','Rental Date')}</tr></thead><tbody>
-    ${filtered.map(e=>`<tr><td>${esc(e['løbenr.']||'-')}</td><td>${esc(e['Ejerskab']||'-')}</td><td>${fmtDate(e['Købsdato'])}</td><td>${esc(e['Effekt']||'-')}</td><td class="container-number">${esc((e['Præfix']||'') + ' ' + (e['958112-5']||''))}</td><td>${esc(e['Firma']||'-')}</td><td>${esc(e['Købspris']||'-')}</td><td>${esc(e['Lejer']||'-')}</td><td>${fmtDate(e['Udlej.dato'])}</td></tr>`).join('')}</tbody></table>`;
+    return `<div class="table-wrap"><table class="data-table"><thead><tr>${thSort('containers','løbenr.','No.')}${thSort('containers','Ejerskab','Ownership')}${thSort('containers','Købsdato','Purchase Date')}${thSort('containers','Effekt','Type')}${thSort('containers','Præfix','ID')}${thSort('containers','Firma','Company')}${thSort('containers','Købspris','Purchase Price')}${thSort('containers','Lejer','Lessee')}${thSort('containers','Udlej.dato','Rental Date')}</tr></thead><tbody>
+    ${filtered.map(e=>`<tr><td>${esc(e['løbenr.']||'-')}</td><td>${esc(e['Ejerskab']||'-')}</td><td>${fmtDate(e['Købsdato'])}</td><td>${esc(e['Effekt']||'-')}</td><td class="container-number">${esc((e['Præfix']||'') + ' ' + (e['958112-5']||''))}</td><td>${esc(e['Firma']||'-')}</td><td>${esc(e['Købspris']||'-')}</td><td>${esc(e['Lejer']||'-')}</td><td>${fmtDate(e['Udlej.dato'])}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 // === CERTIFICATES ===
 function rCerts() {
     const data = sortData(D.certificates, 'certificates');
     return `<div class="page-header"><div><h1>${t('certificates')}</h1><p>${D.certificates.length} certificates</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.certificates,'certifikatnumre.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-cert')">+ New Certificate</button>`:''}</div></div>
-    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="ceSearch" onkeyup="render()"></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="ceSearch" onkeyup="searchState.ceSearch=this.value;render()"></div>
     <div id="ceTbl">${ceTbl(data)}</div></div>`;
 }
 function ceTbl(data) {
-    const q = (document.getElementById('ceSearch')?.value || '').toLowerCase();
+    const q = (searchState.ceSearch || '').toLowerCase();
     const filtered = data.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
 
     if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
-    return `<table class="data-table"><thead><tr>${thSort('certificates','Certifikat nr.','Cert No.')}${thSort('certificates','Kunde','Customer')}${thSort('certificates','Type','Type')}${thSort('certificates','Måned','Month')}${thSort('certificates','UNIT','Unit')}${thSort('certificates','Sling nr.','Sling No.')}${thSort('certificates','Ordre.nr','Order No.')}${thSort('certificates','Hvem','Who')}</tr></thead><tbody>
-    ${filtered.map(c=>`<tr><td class="container-number">${esc(c['Certifikat nr.']||'-')}</td><td>${esc(c['Kunde']||'-')}</td><td>${esc(c['Type']||'-')}</td><td>${esc(c['Måned']||'-')}</td><td>${esc(c['UNIT']||'-')}</td><td>${esc(c['Sling nr.']||'-')}</td><td>${esc(c['Ordre.nr']||'-')}</td><td>${esc(c['Hvem']||'-')}</td></tr>`).join('')}</tbody></table>`;
+    return `<div class="table-wrap"><table class="data-table"><thead><tr>${thSort('certificates','Certifikat nr.','Cert No.')}${thSort('certificates','Kunde','Customer')}${thSort('certificates','Type','Type')}${thSort('certificates','Måned','Month')}${thSort('certificates','UNIT','Unit')}${thSort('certificates','Sling nr.','Sling No.')}${thSort('certificates','Ordre.nr','Order No.')}${thSort('certificates','Hvem','Who')}</tr></thead><tbody>
+    ${filtered.map(c=>`<tr><td class="container-number">${esc(c['Certifikat nr.']||'-')}</td><td>${esc(c['Kunde']||'-')}</td><td>${esc(c['Type']||'-')}</td><td>${esc(c['Måned']||'-')}</td><td>${esc(c['UNIT']||'-')}</td><td>${esc(c['Sling nr.']||'-')}</td><td>${esc(c['Ordre.nr']||'-')}</td><td>${esc(c['Hvem']||'-')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 // === TASKS ===
 function rTasks() {
     const data = sortData(D.tasks, 'tasks');
     return `<div class="page-header"><div><h1>${t('tasks')}</h1><p>${D.tasks.length} tasks</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.tasks,'opgaveliste.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-task')">+ New Task</button>`:''}</div></div>
-    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="tSearch" onkeyup="render()"></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="tSearch" onkeyup="searchState.tSearch=this.value;render()"></div>
     <div id="tTbl">${tTbl(data)}</div></div>`;
 }
 function tTbl(data) {
-    const q = (document.getElementById('tSearch')?.value || '').toLowerCase();
+    const q = (searchState.tSearch || '').toLowerCase();
     const filtered = data.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
 
     if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
-    return `<table class="data-table"><thead><tr>${thSort('tasks','Job nr','Job No.')}${thSort('tasks','job modtaget','Received')}${thSort('tasks','Beskrivelse','Description')}${thSort('tasks','Kunde','Customer')}</tr></thead><tbody>
-    ${filtered.map(t=>`<tr><td class="container-number">${esc(t['Job nr']||'-')}</td><td>${fmtDate(t['job modtaget'])}</td><td>${esc(t['Beskrivelse']||'-')}</td><td>${esc(t['Kunde']||'-')}</td></tr>`).join('')}</tbody></table>`;
+    return `<div class="table-wrap"><table class="data-table"><thead><tr>${thSort('tasks','Job nr','Job No.')}${thSort('tasks','job modtaget','Received')}${thSort('tasks','Beskrivelse','Description')}${thSort('tasks','Kunde','Customer')}</tr></thead><tbody>
+    ${filtered.map(t=>`<tr><td class="container-number">${esc(t['Job nr']||'-')}</td><td>${fmtDate(t['job modtaget'])}</td><td>${esc(t['Beskrivelse']||'-')}</td><td>${esc(t['Kunde']||'-')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 // === LOOSEGEAR ===
 function rLoosegear() {
     const data = sortData(D.loosegear, 'loosegear');
     return `<div class="page-header"><div><h1>${t('loosegear')}</h1><p>${D.loosegear.length} items</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.loosegear,'loosegear.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-loosegear')">+ Add Loosegear</button>`:''}</div></div>
-    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="lgSearch" onkeyup="render()"></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="lgSearch" onkeyup="searchState.lgSearch=this.value;render()"></div>
     <div id="lgTbl">${lgTbl(data)}</div></div>`;
 }
 function lgTbl(data) {
-    const q = (document.getElementById('lgSearch')?.value || '').toLowerCase();
+    const q = (searchState.lgSearch || '').toLowerCase();
     const filtered = data.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
 
     if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
-    return `<table class="data-table"><thead><tr>${thSort('loosegear','Certifikat Nr','Cert No.')}${thSort('loosegear','Kunde','Customer')}${thSort('loosegear','Inspektions dato','Inspection Date')}${thSort('loosegear','Beskrivelse','Description')}${thSort('loosegear','Hvem','Who')}</tr></thead><tbody>
-    ${filtered.map(l=>`<tr><td class="container-number">${esc(l['Certifikat Nr']||'-')}</td><td>${esc(l['Kunde']||'-')}</td><td>${fmtDate(l['Inspektions dato'])}</td><td>${esc(l['Beskrivelse']||'-')}</td><td>${esc(l['Hvem']||'-')}</td></tr>`).join('')}</tbody></table>`;
+    return `<div class="table-wrap"><table class="data-table"><thead><tr>${thSort('loosegear','Certifikat Nr','Cert No.')}${thSort('loosegear','Kunde','Customer')}${thSort('loosegear','Inspektions dato','Inspection Date')}${thSort('loosegear','Beskrivelse','Description')}${thSort('loosegear','Hvem','Who')}</tr></thead><tbody>
+    ${filtered.map(l=>`<tr><td class="container-number">${esc(l['Certifikat Nr']||'-')}</td><td>${esc(l['Kunde']||'-')}</td><td>${fmtDate(l['Inspektions dato'])}</td><td>${esc(l['Beskrivelse']||'-')}</td><td>${esc(l['Hvem']||'-')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 // === TIMELINE ===
 function rTimeline() {
     const sorted = sortData(D.timeline, 'timeline');
     return `<div class="page-header"><div><h1>${t('timeline')}</h1><p>${D.timeline.length} movements</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.timeline,'timeline.csv')">&#8681; ${t('exportExcel')}</button></div></div>
-    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="tlSearch" onkeyup="render()"></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="tlSearch" onkeyup="searchState.tlSearch=this.value;render()"></div>
     <div id="tlTbl">${tlTbl(sorted)}</div></div>`;
 }
 function tlTbl(data) {
-    const q = (document.getElementById('tlSearch')?.value || '').toLowerCase();
+    const q = (searchState.tlSearch || '').toLowerCase();
     const filtered = data.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
 
     if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
-    return `<table class="data-table"><thead><tr>${thSort('timeline','Dato',t('date'))}${thSort('timeline','Ind_x002f_ud',t('inOut'))}${thSort('timeline','Unitid',t('unitId'))}${thSort('timeline','Vognmand',t('carrier'))}${thSort('timeline','Kunde',t('customer'))}${thSort('timeline','Service',t('service'))}${thSort('timeline','Hvem',t('who'))}${thSort('timeline','Bogholderikommentar',t('bookkeeping'))}${thSort('timeline','Status',t('status'))}</tr></thead><tbody>
-    ${filtered.map(e=>`<tr><td>${fmtDate(e.Dato)}</td><td>${isIn(e.Ind_x002f_ud)?'<span class="badge badge-green">IN</span>':isOut(e.Ind_x002f_ud)?'<span class="badge badge-amber">OUT</span>':'<span class="badge badge-gray">'+esc(String(e.Ind_x002f_ud||'-'))+'</span>'}</td><td class="container-number">${esc(e.Unitid||'-')}</td><td>${esc(exName(e.Vognmand))}</td><td>${esc(e.Kunde||'-')}</td><td>${svcVal(e.Service)?`<span class="badge badge-${svcColor(e.Service)}">${esc(svcVal(e.Service))}</span>`:'-'}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(e.Bogholderikommentar||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table>`;
+    return `<div class="table-wrap"><table class="data-table"><thead><tr>${thSort('timeline','Dato',t('date'))}${thSort('timeline','Ind_x002f_ud',t('inOut'))}${thSort('timeline','Unitid',t('unitId'))}${thSort('timeline','Vognmand',t('carrier'))}${thSort('timeline','Kunde',t('customer'))}${thSort('timeline','Service',t('service'))}${thSort('timeline','Hvem',t('who'))}${thSort('timeline','Bogholderikommentar',t('bookkeeping'))}${thSort('timeline','Status',t('status'))}</tr></thead><tbody>
+    ${filtered.map(e=>`<tr><td>${fmtDate(e.Dato)}</td><td>${isIn(e.Ind_x002f_ud)?'<span class="badge badge-green">IN</span>':isOut(e.Ind_x002f_ud)?'<span class="badge badge-amber">OUT</span>':'<span class="badge badge-gray">'+esc(String(e.Ind_x002f_ud||'-'))+'</span>'}</td><td class="container-number">${esc(e.Unitid||'-')}</td><td>${esc(exName(e.Vognmand))}</td><td>${esc(e.Kunde||'-')}</td><td>${svcVal(e.Service)?`<span class="badge badge-${svcColor(e.Service)}">${esc(svcVal(e.Service))}</span>`:'-'}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(e.Bogholderikommentar||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table></div>`;
 }
 
 // === ADMIN ===
