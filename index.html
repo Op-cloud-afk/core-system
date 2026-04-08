@@ -380,7 +380,7 @@ function rAdmin(){
         <div class="card"><h3>Service Types</h3><p style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;">From Truckliste</p><div class="tag-list">${svcs.map(s=>`<div class="tag">${esc(s)}</div>`).join('')}</div></div>
         <div class="card"><h3>Statuses</h3><p style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;">Currently in use</p><div class="tag-list">${stats.map(s=>`<div class="tag">${esc(s)}</div>`).join('')}</div></div>
         <div class="card"><h3>Carriers (Vognm&aelig;nd)</h3><div class="tag-list">${carriers.map(c=>`<div class="tag">${esc(c)}</div>`).join('')}</div></div>
-        <div class="card"><h3>Clients</h3><div class="tag-list">${D.clients.map(c=>`<div class="tag">${esc(c.Title||c.Client_x0020_name||'-')}</div>`).join('')}</div></div>
+        <div class="card"><h3>Clients</h3><div class="tag-list">${D.clients.map(c=>`<div class="tag">${esc(c.Clientname||c.Title||'-')}</div>`).join('')}</div></div>
     </div>
     <div class="card" style="margin-top:24px;"><h3 style="margin-bottom:12px;">Data Sources</h3><table class="data-table"><thead><tr><th>List</th><th>Items</th><th>Link</th></tr></thead><tbody>
         <tr><td><strong>Truckliste</strong></td><td>${D.truck.length}</td><td><a href="https://${SP_HOST}${SP_PATH}/Lists/Truckliste" target="_blank">Open in SharePoint</a></td></tr>
