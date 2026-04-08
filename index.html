@@ -74,7 +74,7 @@
         .data-table th.sort-active .sort-icon { opacity: 1; color: var(--accent-blue); }
         .data-table th.sort-active { color: var(--accent-blue); }
         .data-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); font-size: 14px; vertical-align: middle; }
-        .data-table tr:hover { background: #f1f5f9; cursor: pointer; }
+        .data-table tr:hover { background: #f1f5f9; }
         .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
         .badge-green { background: #dcfce7; color: #166534; }
         .badge-red { background: #fee2e2; color: #991b1b; }
@@ -155,17 +155,19 @@
             <div class="nav-item" data-page="containers" onclick="nav('containers')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="6" width="22" height="12" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg><span>Containers</span></div>
             <div class="nav-item" data-page="certificates" onclick="nav('certificates')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span>Certificates</span></div>
             <div class="nav-item" data-page="tasks" onclick="nav('tasks')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg><span>Tasks</span></div>
+            <div class="nav-item" data-page="loosegear" onclick="nav('loosegear')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Loosegear</span></div>
             <div class="nav-item" data-page="timeline" onclick="nav('timeline')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span>Timeline</span></div>
             <div class="nav-item admin-only" data-page="admin" onclick="nav('admin')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09c-.658.003-1.25.396-1.51 1z"/></svg><span>Administration</span></div>
         </div>
         <div class="sidebar-footer"><button onclick="signOut()">Sign Out</button></div>
     </nav>
     <div class="topbar">
-        <div class="topbar-search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search by container number..." id="globalSearch" onkeyup="if(event.key==='Enter')doGlobalSearch()"></div>
+        <div class="topbar-search"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search..." id="globalSearch" onkeyup="if(event.key==='Enter')doGlobalSearch()"></div>
         <div class="topbar-actions">
             <select class="lang-select" onchange="lang=this.value;render()"><option value="en">English</option><option value="da">Dansk</option></select>
-            <button class="btn btn-primary admin-only" onclick="nav('new-cert')">+ New Certificate</button>
-            <button class="btn btn-primary admin-only" onclick="nav('new-entry')">+ New Entry</button>
+            <button class="btn btn-primary admin-only" onclick="nav('new-cert')">+ New Inspection</button>
+            <button class="btn btn-primary admin-only" onclick="nav('new-task')">+ New Task</button>
+            <button class="btn btn-primary admin-only" onclick="nav('new-entry')">+ New Container</button>
             <div class="user-badge"><div class="user-avatar" id="userAvatar">?</div><span id="userName">User</span><span id="userRoleBadge" class="role-badge" style="margin-left:4px;"></span></div>
         </div>
     </div>
@@ -175,26 +177,35 @@
 <script>
 // === CONFIG ===
 const MSAL_CFG = { auth: { clientId:'5ba644e5-fc21-4305-ae9b-83cdc45a89a8', authority:'https://login.microsoftonline.com/4aeeed86-5b8d-4dc3-9f21-189804e8ef43', redirectUri: location.href.split('?')[0].split('#')[0] }, cache: { cacheLocation:'localStorage' } };
-const SCOPES = ['User.Read','Sites.Read.All'];
+const SCOPES = ['User.Read', 'Sites.Read.All', 'Files.Read.All'];
+const WRITE_SCOPES = ['User.Read', 'Sites.ReadWrite.All', 'Files.ReadWrite.All'];
+const DRIVE_ID = 'b!lOk5ETfZZ02Wysrm90FiSnBaxIkFL-9OkaI7gW2KbSjM4j_DuZh8RKzxOC9OqdTn';
 const SP_HOST = 'njcontaineroffshoreservi304.sharepoint.com', SP_PATH = '/sites/common';
 
-// === RBAC: Add admin emails here. Anyone not listed is a Viewer (read-only). ===
+// Excel file IDs (item IDs from OneDrive)
+const EXCEL_ITEMS = {
+    containers: { itemId: '01XXVSIS4PXPSZ3AMPAFBLZUX3T6TYDS4B', sheet: '30.04.2026' },
+    certificates: { itemId: '01XXVSIS3YI2AZR2R37FB2IXEA22RWGP67', sheet: '2026' },
+    tasks: { itemId: '01XXVSIS5QHZEZZH7EL5BY74OFCT4D3DR2', sheet: 'Opgaveliste' },
+    loosegear: { itemId: '01XXVSIS4NYL7PWPZVWRAYMKJOSLAFCLH2', sheet: 'Ark1' }
+};
+
+// RBAC: Add admin emails here
 const ADMIN_EMAILS = [
     'op@njco.dk',
     'gbk@njco.dk',
-    // Add more admin emails below:
 ];
 
-let msal_app, account, siteId, page='dashboard', lang='en', selUnit=null;
-let userRole = 'viewer'; // 'admin' or 'viewer'
-let D = { truck:[], certs:[], clients:[] };
+let msal_app, account, siteId, page='dashboard', lang='en';
+let userRole = 'viewer';
+let D = { containers: [], certificates: [], tasks: [], loosegear: [], timeline: [], clients: [] };
 let dataLoaded = false;
-let sortState = { containers: { col: 'Dato', dir: -1 }, certs: { col: 'Title', dir: -1 }, tasks: { col: 'Dato', dir: -1 } };
+let sortState = { containers: { col: 'løbenr.', dir: 1 }, certificates: { col: 'Certifikat nr.', dir: 1 }, tasks: { col: 'Job nr', dir: 1 }, loosegear: { col: 'Certifikat Nr', dir: 1 }, timeline: { col: 'Dato', dir: -1 } };
 
 // === i18n ===
 const L = {
-    en:{dashboard:'Dashboard',containers:'Containers',certificates:'Certificates',tasks:'Tasks',timeline:'Timeline',admin:'Administration',search:'Search...',date:'Date',who:'Who',unitId:'Unit ID',carrier:'Carrier',customer:'Customer',service:'Service',comment:'Comment',status:'Status',bookkeeping:'Bookkeeping',inOut:'In/Out',certNo:'Cert No.',client:'Client',type:'Type',allTypes:'All Types',allStatuses:'All Statuses',exportExcel:'Export CSV',addNew:'+ Add New',back:'Back',noData:'No data available',loading:'Loading from SharePoint...',approved:'Approved',invoiceNo:'Invoice No.',inspType:'Inspection Type'},
-    da:{dashboard:'Dashboard',containers:'Containere',certificates:'Certifikater',tasks:'Opgaver',timeline:'Tidslinje',admin:'Administration',search:'Søg...',date:'Dato',who:'Hvem',unitId:'Enhed ID',carrier:'Vognmand',customer:'Kunde',service:'Service',comment:'Kommentar',status:'Status',bookkeeping:'Bogholderi',inOut:'Ind/Ud',certNo:'Cert Nr.',client:'Klient',type:'Type',allTypes:'Alle Typer',allStatuses:'Alle Statusser',exportExcel:'Eksporter CSV',addNew:'+ Tilføj Ny',back:'Tilbage',noData:'Ingen data',loading:'Indlæser fra SharePoint...',approved:'Godkendt',invoiceNo:'Faktura Nr.',inspType:'Inspektionstype'}
+    en:{dashboard:'Dashboard',containers:'Containers',certificates:'Certificates',tasks:'Tasks',loosegear:'Loosegear',timeline:'Timeline',admin:'Administration',search:'Search...',date:'Date',who:'Who',unitId:'Unit ID',carrier:'Carrier',customer:'Customer',service:'Service',comment:'Comment',status:'Status',bookkeeping:'Bookkeeping',inOut:'In/Out',certNo:'Cert No.',client:'Client',type:'Type',allTypes:'All Types',allStatuses:'All Statuses',exportExcel:'Export CSV',addNew:'+ Add New',back:'Back',noData:'No data available',loading:'Loading data...',approved:'Approved',invoiceNo:'Invoice No.',inspType:'Inspection Type'},
+    da:{dashboard:'Dashboard',containers:'Containere',certificates:'Certifikater',tasks:'Opgaver',loosegear:'Løst Udstyr',timeline:'Tidslinje',admin:'Administration',search:'Søg...',date:'Dato',who:'Hvem',unitId:'Enhed ID',carrier:'Vognmand',customer:'Kunde',service:'Service',comment:'Kommentar',status:'Status',bookkeeping:'Bogholderi',inOut:'Ind/Ud',certNo:'Cert Nr.',client:'Klient',type:'Type',allTypes:'Alle Typer',allStatuses:'Alle Statusser',exportExcel:'Eksporter CSV',addNew:'+ Tilføj Ny',back:'Tilbage',noData:'Ingen data',loading:'Indlæser data...',approved:'Godkendt',invoiceNo:'Faktura Nr.',inspType:'Inspektionstype'}
 };
 const t = k => (L[lang]||L.en)[k]||k;
 
@@ -215,6 +226,10 @@ async function getToken() {
     try { return (await msal_app.acquireTokenSilent({scopes:SCOPES,account})).accessToken; }
     catch(e) { if(e instanceof msal.InteractionRequiredAuthError) await msal_app.acquireTokenRedirect({scopes:SCOPES}); throw e; }
 }
+async function getWriteToken() {
+    try { return (await msal_app.acquireTokenSilent({scopes:WRITE_SCOPES,account})).accessToken; }
+    catch(e) { if(e instanceof msal.InteractionRequiredAuthError) await msal_app.acquireTokenRedirect({scopes:WRITE_SCOPES}); throw e; }
+}
 async function onAuth() {
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('appLayout').classList.add('active');
@@ -225,7 +240,6 @@ async function onAuth() {
     document.getElementById('userAvatar').textContent = n.split(' ').map(x=>x[0]).join('').substring(0,2).toUpperCase();
     document.getElementById('userRoleBadge').textContent = userRole === 'admin' ? 'Admin' : 'Viewer';
     document.getElementById('userRoleBadge').className = 'role-badge ' + (userRole === 'admin' ? 'role-admin' : 'role-viewer');
-    // Hide write buttons and admin nav for viewers
     document.querySelectorAll('.admin-only').forEach(el => el.classList.toggle('hidden', userRole !== 'admin'));
     if (userRole === 'viewer') {
         document.getElementById('viewOnlyBanner').classList.remove('hidden');
@@ -241,14 +255,15 @@ async function gGet(url) {
     if(!r.ok) throw new Error('Graph '+r.status+' '+r.statusText);
     return r.json();
 }
-const WRITE_SCOPES = ['User.Read','Sites.ReadWrite.All'];
-async function getWriteToken() {
-    try { return (await msal_app.acquireTokenSilent({scopes:WRITE_SCOPES,account})).accessToken; }
-    catch(e) { if(e instanceof msal.InteractionRequiredAuthError) { await msal_app.acquireTokenRedirect({scopes:WRITE_SCOPES}); } throw e; }
-}
 async function gPost(url,body) {
     const tk = await getWriteToken();
     const r = await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+tk,'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(!r.ok) { const t = await r.text(); throw new Error('Graph '+r.status+': '+t); }
+    return r.json();
+}
+async function gPatch(url,body) {
+    const tk = await getWriteToken();
+    const r = await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+tk,'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!r.ok) { const t = await r.text(); throw new Error('Graph '+r.status+': '+t); }
     return r.json();
 }
@@ -260,179 +275,477 @@ async function getList(name) {
 }
 async function addItem(list,fields) { const s=await getSite(); return gPost(`https://graph.microsoft.com/v1.0/sites/${s}/lists/${list}/items`,{fields}); }
 
+// === EXCEL API ===
+async function readExcelSheet(type) {
+    const cfg = EXCEL_ITEMS[type];
+    const url = `https://graph.microsoft.com/v1.0/drives/${DRIVE_ID}/items/${cfg.itemId}/workbook/worksheets('${encodeURIComponent(cfg.sheet)}')/usedRange?$select=values`;
+    const data = await gGet(url);
+    const values = data.values || [];
+    if (values.length === 0) return [];
+
+    const headers = values[0];
+    const rows = [];
+
+    // Handle Opgave oversigt special case: row 2 has real headers
+    const headerRowIdx = (type === 'tasks') ? 2 : 1;
+    const dataStartIdx = (type === 'tasks') ? 3 : 2;
+
+    if (type === 'tasks' && values.length > 2) {
+        // Use row 2 as headers for tasks
+        const realHeaders = values[2];
+        for (let i = dataStartIdx; i < values.length; i++) {
+            if (!values[i] || !values[i][0]) continue; // Skip empty rows
+            const row = {};
+            realHeaders.forEach((h, j) => {
+                row[h] = values[i][j] || '';
+            });
+            rows.push(row);
+        }
+    } else {
+        for (let i = dataStartIdx; i < values.length; i++) {
+            if (!values[i] || !values[i][0]) continue;
+            const row = {};
+            headers.forEach((h, j) => {
+                row[h] = values[i][j] || '';
+            });
+            rows.push(row);
+        }
+    }
+
+    return rows;
+}
+
+async function addExcelRow(type, values) {
+    const cfg = EXCEL_ITEMS[type];
+    const data = await gGet(`https://graph.microsoft.com/v1.0/drives/${DRIVE_ID}/items/${cfg.itemId}/workbook/worksheets('${encodeURIComponent(cfg.sheet)}')/usedRange?$select=values`);
+    const currentValues = data.values || [];
+    const nextRow = currentValues.length + 1;
+
+    const colLetters = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T'];
+    const lastCol = colLetters[values.length - 1] || 'Z';
+
+    const url = `https://graph.microsoft.com/v1.0/drives/${DRIVE_ID}/items/${cfg.itemId}/workbook/worksheets('${encodeURIComponent(cfg.sheet)}')/range(address='A${nextRow}:${lastCol}${nextRow}')`;
+    await gPatch(url, { values: [values] });
+}
+
+// === DATE HELPERS ===
+function excelDateToJS(serial) {
+    if (!serial || typeof serial !== 'number') return null;
+    const epoch = new Date(1899, 11, 30);
+    return new Date(epoch.getTime() + serial * 86400000);
+}
+
+function fmtDate(s) {
+    if (!s) return '-';
+    try {
+        let d;
+        if (typeof s === 'number') {
+            d = excelDateToJS(s);
+        } else {
+            d = new Date(s);
+        }
+        return isNaN(d) ? esc(s) : d.toLocaleDateString('da-DK');
+    } catch {
+        return esc(s);
+    }
+}
+
 // === DATA ===
 async function loadData() {
     document.getElementById('page').innerHTML = `<div class="loading"><div class="spinner"></div>${t('loading')}</div>`;
     try {
-        const [a,b,c] = await Promise.all([
-            getList('Truckliste').catch(e=>(console.warn(e),[])),
-            getList('Certifikatnumre').catch(e=>(console.warn(e),[])),
-            getList('Clients').catch(e=>(console.warn(e),[]))
+        const [containers, certificates, tasks, loosegear, timeline, clients] = await Promise.all([
+            readExcelSheet('containers').catch(e=>(console.warn('Containers error:',e),[])),
+            readExcelSheet('certificates').catch(e=>(console.warn('Certificates error:',e),[])),
+            readExcelSheet('tasks').catch(e=>(console.warn('Tasks error:',e),[])),
+            readExcelSheet('loosegear').catch(e=>(console.warn('Loosegear error:',e),[])),
+            getList('Truckliste').catch(e=>(console.warn('Timeline error:',e),[])),
+            getList('Clients').catch(e=>(console.warn('Clients error:',e),[]))
         ]);
-        D.truck = a.map(i=>({id:i.id,...i.fields}));
-        D.certs = b.map(i=>({id:i.id,...i.fields}));
-        D.clients = c.map(i=>({id:i.id,...i.fields}));
+
+        D.containers = containers;
+        D.certificates = certificates;
+        D.tasks = tasks;
+        D.loosegear = loosegear;
+        D.timeline = timeline.map(i=>({id:i.id,...i.fields}));
+        D.clients = clients.map(i=>({id:i.id,...i.fields}));
+
         dataLoaded = true;
-        toast(`Loaded ${D.truck.length} entries, ${D.certs.length} certificates, ${D.clients.length} clients`,'success');
+        toast(`Loaded ${D.containers.length} containers, ${D.certificates.length} certs, ${D.tasks.length} tasks, ${D.loosegear.length} loosegear items`,'success');
     } catch(e) { toast('Load error: '+e.message,'error'); }
 }
 
 // === NAV ===
-function nav(p,d) { if(!dataLoaded){toast('Still loading data, please wait...','info');return;} if(!isAdmin()&&(p==='new-entry'||p==='new-cert'||p==='admin')){toast('Access denied — admin only','error');return;} page=p; if(d) selUnit=d; document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===p||(p==='detail'&&n.dataset.page==='containers'))); render(); window.scrollTo(0,0); }
-function render() { const el=document.getElementById('page'); if(!dataLoaded){el.innerHTML=`<div class="loading"><div class="spinner"></div>${t('loading')}</div>`;return;} el.innerHTML=({dashboard:rDash,containers:rContainers,detail:rDetail,certificates:rCerts,tasks:rTasks,timeline:rTimeline,admin:rAdmin,'new-entry':rNewEntry,'new-cert':rNewCert}[page]||rDash)(); }
+function nav(p,d) {
+    if(!dataLoaded){toast('Still loading data, please wait...','info');return;}
+    if(!isAdmin()&&(p==='new-entry'||p==='new-cert'||p==='new-task'||p==='new-loosegear'||p==='admin')){toast('Access denied — admin only','error');return;}
+    page=p;
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===p));
+    render();
+    window.scrollTo(0,0);
+}
+function render() { const el=document.getElementById('page'); if(!dataLoaded){el.innerHTML=`<div class="loading"><div class="spinner"></div>${t('loading')}</div>`;return;} el.innerHTML=({dashboard:rDash,containers:rContainers,certificates:rCerts,tasks:rTasks,loosegear:rLoosegear,timeline:rTimeline,admin:rAdmin,'new-entry':rNewEntry,'new-cert':rNewCert,'new-task':rNewTask,'new-loosegear':rNewLoosegear}[page]||rDash)(); }
 
 // === HELPERS ===
 function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
-function fmtDate(s){if(!s)return'-';try{const d=new Date(s);return isNaN(d)?esc(s):d.toLocaleDateString('da-DK');}catch{return esc(s);}}
-function exName(v){if(!v)return'-';if(typeof v==='object'&&v.LookupValue)return v.LookupValue;if(Array.isArray(v))return v.join(', ')||'-';const s=String(v);if(s.startsWith('{"fileName"'))return'-';if(s.includes(';#')){const p=s.split(';#').filter(x=>x&&isNaN(x));return p.join(', ')||s;}return s;}
-function isImgJson(v){return v&&typeof v==='string'&&v.startsWith('{"fileName"');}
-function cleanId(v){if(!v||isImgJson(v))return'';return String(v);}
+function exName(v){if(!v)return'-';if(typeof v==='object'&&v.LookupValue)return v.LookupValue;if(Array.isArray(v))return v.join(', ')||'-';const s=String(v);if(s.includes(';#')){const p=s.split(';#').filter(x=>x&&isNaN(x));return p.join(', ')||s;}return s;}
 function svcVal(s){if(!s)return'';if(Array.isArray(s))return s.join(', ');return String(s);}
 function svcColor(s){if(!s)return'gray';const l=svcVal(s).toLowerCase();if(l.includes('repe'))return'red';if(l.includes('offhire'))return'amber';if(l.includes('vask'))return'blue';if(l.includes('inspek'))return'purple';if(l.includes('udlej'))return'blue';return'gray';}
+function isIn(v){return v==='Ind'||v==='1'||v===1;}
+function isOut(v){return v==='Ud'||v==='0'||v===0;}
 function toast(m,type){const c=document.getElementById('toastContainer'),t=document.createElement('div');t.className='toast toast-'+type;t.textContent=m;c.appendChild(t);setTimeout(()=>t.remove(),4000);}
 function sortIcon(table,col){const s=sortState[table];const active=s.col===col;return `<span class="sort-icon">${active?(s.dir===1?'&#9650;':'&#9660;'):'&#9650;'}</span>`;}
 function thSort(table,col,label){return `<th class="${sortState[table].col===col?'sort-active':''}" onclick="toggleSort('${table}','${col}')">${label} ${sortIcon(table,col)}</th>`;}
-function toggleSort(table,col){const s=sortState[table];if(s.col===col)s.dir*=-1;else{s.col=col;s.dir=1;} if(table==='containers'){document.getElementById('cTbl').innerHTML=cTbl(getFilteredTruck());}else if(table==='certs'){document.getElementById('ceTbl').innerHTML=ceTbl(getFilteredCerts());}else if(table==='tasks'){document.getElementById('tTbl').innerHTML=tTbl(getFilteredTasks());}}
+function toggleSort(table,col){const s=sortState[table];if(s.col===col)s.dir*=-1;else{s.col=col;s.dir=1;}render();}
 function isEmpty(v){return v===null||v===undefined||v===''||v==='-'||v===0;}
-function sortData(data,table){const s=sortState[table];const col=s.col,dir=s.dir;return data.slice().sort((a,b)=>{let va=a[col],vb=b[col];let isDate=col==='Dato'||col==='Created'||col==='Modified';let isNum=col==='field_6';let isBool=col==='Godkendtafvist';let isSvc=col==='Service';let isLookup=col==='field_1'||col==='field_7'||col==='Vognmand'||col==='Hvem'||col==='Kunde';let isUid=col==='Unitid'||col==='field_3';if(isDate){va=va?new Date(va).getTime():0;vb=vb?new Date(vb).getTime():0;}else if(isBool){va=va?1:0;vb=vb?1:0;}else if(isSvc){va=svcVal(va);vb=svcVal(vb);}else if(isLookup){va=exName(va);vb=exName(vb);}else if(isUid){va=cleanId(va);vb=cleanId(vb);}else if(isNum){va=va?Number(String(va).replace(/[^0-9.-]/g,''))||0:0;vb=vb?Number(String(vb).replace(/[^0-9.-]/g,''))||0:0;}else{va=String(va||'');vb=String(vb||'');}if(!isDate&&!isBool&&!isNum){let ea=!va||va==='-',eb=!vb||vb==='-';if(ea&&!eb)return 1;if(!ea&&eb)return -1;if(ea&&eb)return 0;va=va.toLowerCase();vb=vb.toLowerCase();}else if(isNum){let ea=!a[col]&&a[col]!==0,eb=!b[col]&&b[col]!==0;if(ea&&!eb)return 1;if(!ea&&eb)return -1;}if(va<vb)return -1*dir;if(va>vb)return 1*dir;return 0;});}
-function getFilteredTruck(){const q=(document.getElementById('cSearch')?.value||'').toLowerCase(),svc=document.getElementById('fSvc')?.value||'',st=document.getElementById('fStat')?.value||'';return D.truck.filter(e=>{if(q&&!JSON.stringify(e).toLowerCase().includes(q))return false;if(svc&&svcVal(e.Service)!==svc)return false;if(st&&e.Status!==st)return false;return true;});}
-function getFilteredCerts(){const q=(document.getElementById('ceSearch')?.value||'').toLowerCase(),cl=document.getElementById('fCeClient')?.value||'';return D.certs.filter(c=>{if(q&&!JSON.stringify(c).toLowerCase().includes(q))return false;if(cl&&exName(c.field_1)!==cl)return false;return true;});}
-function getFilteredTasks(){const q=(document.getElementById('tSearch')?.value||'').toLowerCase(),svc=document.getElementById('fTSvc')?.value||'';return D.truck.filter(e=>{if(!svcVal(e.Service))return false;if(q&&!JSON.stringify(e).toLowerCase().includes(q))return false;if(svc&&svcVal(e.Service)!==svc)return false;return true;});}
-function doGlobalSearch(){const q=(document.getElementById('globalSearch').value||'').toUpperCase();if(!q)return;const f=D.truck.find(e=>cleanId(e.Unitid).toUpperCase().includes(q));if(f&&cleanId(f.Unitid))nav('detail',cleanId(f.Unitid));else toast('Not found: '+q,'info');}
-function exportCSV(data,fn){if(!data.length){toast('No data','info');return;}const skip=['@odata.etag','id','ContentType','AuthorLookupId','EditorLookupId','_UIVersionString','AppAuthorLookupId','AppEditorLookupId','_ComplianceFlags','_ComplianceTag','_ComplianceTagWrittenTime','_ComplianceTagUserId','ItemChildCount','FolderChildCount','Edit','LinkTitle','LinkTitleNoMenu'];const ks=Object.keys(data[0]).filter(k=>!k.startsWith('@')&&!skip.includes(k));const csvVal=v=>{if(!v)return'';if(Array.isArray(v))return v.join(', ');const s=String(v);if(s.startsWith('{"fileName"'))return'[image]';return s;};const csv=[ks.join(','),...data.map(r=>ks.map(k=>`"${csvVal(r[k]).replace(/"/g,'""')}"`).join(','))].join('\n');const b=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const l=document.createElement('a');l.href=URL.createObjectURL(b);l.download=fn;l.click();toast('Exported '+data.length+' rows','success');}
+
+function sortData(data, table) {
+    const s = sortState[table];
+    const col = s.col, dir = s.dir;
+    return data.slice().sort((a, b) => {
+        let va = a[col], vb = b[col];
+
+        // Convert to strings for comparison, but handle numbers/dates specially
+        const isNum = !isNaN(va) && !isNaN(vb) && va !== '' && vb !== '';
+        const isDate = col.includes('Dato') || col.includes('dato') || col.includes('date');
+
+        if (isDate) {
+            va = typeof va === 'number' ? excelDateToJS(va) : new Date(va);
+            vb = typeof vb === 'number' ? excelDateToJS(vb) : new Date(vb);
+            va = va ? va.getTime() : 0;
+            vb = vb ? vb.getTime() : 0;
+        } else if (isNum) {
+            va = Number(va);
+            vb = Number(vb);
+        } else {
+            va = String(va || '');
+            vb = String(vb || '');
+        }
+
+        // Empty values always sort to bottom
+        let ea = !a[col] || a[col] === '';
+        let eb = !b[col] || b[col] === '';
+        if (ea && !eb) return 1;
+        if (!ea && eb) return -1;
+        if (ea && eb) return 0;
+
+        if (!isNum && !isDate) {
+            va = va.toLowerCase();
+            vb = vb.toLowerCase();
+        }
+
+        if (va < vb) return -1 * dir;
+        if (va > vb) return 1 * dir;
+        return 0;
+    });
+}
+
+function exportCSV(data, fn) {
+    if(!data.length){toast('No data','info');return;}
+    const ks = Object.keys(data[0]);
+    const csvVal = v => {
+        if(!v) return'';
+        if(Array.isArray(v)) return v.join(', ');
+        return String(v);
+    };
+    const csv = [ks.join(','), ...data.map(r=>ks.map(k=>`"${csvVal(r[k]).replace(/"/g,'""')}"`).join(','))].join('\n');
+    const b = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+    const l = document.createElement('a');
+    l.href = URL.createObjectURL(b);
+    l.download = fn;
+    l.click();
+    toast('Exported '+data.length+' rows','success');
+}
+
+function doGlobalSearch() {
+    const q = (document.getElementById('globalSearch').value || '').toLowerCase();
+    if (!q) return;
+
+    // Search in all sheets
+    const results = [
+        ...D.containers.filter(r => JSON.stringify(r).toLowerCase().includes(q)),
+        ...D.certificates.filter(r => JSON.stringify(r).toLowerCase().includes(q)),
+        ...D.tasks.filter(r => JSON.stringify(r).toLowerCase().includes(q)),
+        ...D.loosegear.filter(r => JSON.stringify(r).toLowerCase().includes(q))
+    ];
+
+    if (results.length > 0) {
+        toast(`Found ${results.length} results`,'info');
+    } else {
+        toast('Not found: '+q,'info');
+    }
+}
 
 // === DASHBOARD ===
 function rDash() {
-    const uids = new Set(D.truck.filter(e=>cleanId(e.Unitid)).map(e=>cleanId(e.Unitid).toUpperCase()));
-    const open = D.truck.filter(e=>e.Status!=='Lukket').length;
-    const recent = D.truck.slice(-10).reverse();
-    const rcerts = D.certs.slice(-5).reverse();
+    const recent = D.timeline.slice(-10).reverse();
+    const rcerts = D.certificates.slice(-5).reverse();
     return `<div class="page-header"><div><h1>${t('dashboard')}</h1><p>Overview of container management system</p></div></div>
     <div class="kpi-grid">
-        <div class="kpi-card" onclick="nav('containers')"><div class="kpi-label">${t('containers')} <div class="kpi-icon" style="background:#dcfce7;color:#166534;">&#9744;</div></div><div class="kpi-value">${uids.size}</div><div class="kpi-sub">Unique unit IDs</div></div>
-        <div class="kpi-card" onclick="nav('containers')"><div class="kpi-label">Total Entries <div class="kpi-icon" style="background:#dbeafe;color:#1e40af;">&#9998;</div></div><div class="kpi-value">${D.truck.length}</div><div class="kpi-sub">Movements recorded</div></div>
-        <div class="kpi-card" onclick="nav('tasks')"><div class="kpi-label">Open Items <div class="kpi-icon" style="background:#fef3c7;color:#92400e;">&#9888;</div></div><div class="kpi-value">${open}</div><div class="kpi-sub">Requires attention</div></div>
-        <div class="kpi-card" onclick="nav('certificates')"><div class="kpi-label">${t('certificates')} <div class="kpi-icon" style="background:#ede9fe;color:#5b21b6;">&#9873;</div></div><div class="kpi-value">${D.certs.length}</div><div class="kpi-sub">Certificates issued</div></div>
+        <div class="kpi-card" onclick="nav('containers')"><div class="kpi-label">${t('containers')} <div class="kpi-icon" style="background:#dcfce7;color:#166534;">&#9744;</div></div><div class="kpi-value">${D.containers.length}</div><div class="kpi-sub">Total containers</div></div>
+        <div class="kpi-card" onclick="nav('certificates')"><div class="kpi-label">${t('certificates')} <div class="kpi-icon" style="background:#dbeafe;color:#1e40af;">&#9873;</div></div><div class="kpi-value">${D.certificates.length}</div><div class="kpi-sub">Certificates issued</div></div>
+        <div class="kpi-card" onclick="nav('tasks')"><div class="kpi-label">Tasks <div class="kpi-icon" style="background:#fef3c7;color:#92400e;">&#9888;</div></div><div class="kpi-value">${D.tasks.length}</div><div class="kpi-sub">Active tasks</div></div>
+        <div class="kpi-card" onclick="nav('loosegear')"><div class="kpi-label">Loosegear <div class="kpi-icon" style="background:#ede9fe;color:#5b21b6;">&#128631;</div></div><div class="kpi-value">${D.loosegear.length}</div><div class="kpi-sub">Gear items</div></div>
     </div>
     <div class="two-col">
         <div class="card"><div class="card-header"><h3>Recent Activity</h3></div>
         ${recent.length?`<table class="data-table"><thead><tr><th>${t('date')}</th><th>${t('unitId')}</th><th>${t('who')}</th><th>${t('service')}</th><th>${t('status')}</th></tr></thead><tbody>
-        ${recent.map(e=>`<tr onclick="${cleanId(e.Unitid)?`nav('detail','${esc(cleanId(e.Unitid))}')`:''}" style="${cleanId(e.Unitid)?'':'cursor:default'}"><td>${fmtDate(e.Dato)}</td><td class="container-number">${esc(cleanId(e.Unitid)||'-')}</td><td>${esc(exName(e.Hvem))}</td><td>${svcVal(e.Service)?`<span class="badge badge-${svcColor(e.Service)}">${esc(svcVal(e.Service))}</span>`:'-'}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table>`:`<div class="empty-state">${t('noData')}</div>`}
+        ${recent.map(e=>`<tr><td>${fmtDate(e.Dato)}</td><td class="container-number">${esc(e.Unitid||'-')}</td><td>${esc(exName(e.Hvem))}</td><td>${svcVal(e.Service)?`<span class="badge badge-${svcColor(e.Service)}">${esc(svcVal(e.Service))}</span>`:'-'}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table>`:`<div class="empty-state">${t('noData')}</div>`}
         </div>
         <div class="card"><div class="card-header"><h3>Recent Certificates</h3></div>
-        ${rcerts.length?`<table class="data-table"><thead><tr><th>${t('certNo')}</th><th>${t('unitId')}</th><th>${t('client')}</th><th>${t('who')}</th></tr></thead><tbody>
-        ${rcerts.map(c=>`<tr><td class="container-number">${esc(c.Title||'-')}</td><td>${esc(c.field_3||'-')}</td><td>${esc(exName(c.field_1))}</td><td>${esc(exName(c.field_7))}</td></tr>`).join('')}</tbody></table>`:`<div class="empty-state">${t('noData')}</div>`}
+        ${rcerts.length?`<table class="data-table"><thead><tr><th>Cert Nr</th><th>Kunde</th><th>Måned</th></tr></thead><tbody>
+        ${rcerts.map(c=>`<tr><td class="container-number">${esc(c['Certifikat nr.']||'-')}</td><td>${esc(c['Kunde']||'-')}</td><td>${esc(c['Måned']||'-')}</td></tr>`).join('')}</tbody></table>`:`<div class="empty-state">${t('noData')}</div>`}
         </div>
     </div>`;
 }
 
 // === CONTAINERS ===
 function rContainers() {
-    const svcs=[...new Set(D.truck.map(e=>svcVal(e.Service)).filter(Boolean))];
-    const stats=[...new Set(D.truck.map(e=>e.Status).filter(Boolean))];
-    return `<div class="page-header"><div><h1>${t('containers')}</h1><p>${D.truck.length} entries</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.truck,'trucklist.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-entry')">${t('addNew')}</button>`:''}</div></div>
-    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="cSearch" onkeyup="fltC()"><select id="fSvc" onchange="fltC()"><option value="">${t('allTypes')}</option>${svcs.map(s=>`<option>${esc(s)}</option>`).join('')}</select><select id="fStat" onchange="fltC()"><option value="">${t('allStatuses')}</option>${stats.map(s=>`<option>${esc(s)}</option>`).join('')}</select></div><div id="cTbl">${cTbl(D.truck)}</div></div>`;
+    const data = sortData(D.containers, 'containers');
+    return `<div class="page-header"><div><h1>${t('containers')}</h1><p>${D.containers.length} entries</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.containers,'containerliste.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-entry')">+ New Container</button>`:''}</div></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="cSearch" onkeyup="render()"></div>
+    <div id="cTbl">${cTbl(data)}</div></div>`;
 }
-function isIn(v){return v==='Ind'||v==='1'||v===1;}
-function isOut(v){return v==='Ud'||v==='0'||v===0;}
 function cTbl(data) {
-    if(!data.length) return `<div class="empty-state">${t('noData')}</div>`;
-    const sorted = sortData(data,'containers');
-    return `<table class="data-table"><thead><tr>${thSort('containers','Dato',t('date'))}${thSort('containers','Ind_x002f_ud',t('inOut'))}${thSort('containers','Unitid',t('unitId'))}${thSort('containers','Vognmand',t('carrier'))}${thSort('containers','Kunde',t('customer'))}${thSort('containers','Service',t('service'))}${thSort('containers','Hvem',t('who'))}${thSort('containers','Bogholderikommentar',t('bookkeeping'))}${thSort('containers','Status',t('status'))}</tr></thead><tbody>
-    ${sorted.map(e=>`<tr onclick="${cleanId(e.Unitid)?`nav('detail','${esc(cleanId(e.Unitid))}')`:''}" style="${cleanId(e.Unitid)?'':'cursor:default'}"><td>${fmtDate(e.Dato)}</td><td>${isIn(e.Ind_x002f_ud)?'<span class="badge badge-green">IN</span>':isOut(e.Ind_x002f_ud)?'<span class="badge badge-amber">OUT</span>':'<span class="badge badge-gray">'+esc(String(e.Ind_x002f_ud||'-'))+'</span>'}</td><td class="container-number">${esc(cleanId(e.Unitid)||'-')}</td><td>${esc(exName(e.Vognmand))}</td><td>${esc(e.Kunde||'-')}</td><td>${svcVal(e.Service)?`<span class="badge badge-${svcColor(e.Service)}">${esc(svcVal(e.Service))}</span>`:'-'}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(e.Bogholderikommentar||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table>`;
-}
-function fltC() { document.getElementById('cTbl').innerHTML=cTbl(getFilteredTruck()); }
+    const q = (document.getElementById('cSearch')?.value || '').toLowerCase();
+    const filtered = data.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
 
-// === DETAIL ===
-function rDetail() {
-    const u=selUnit, entries=D.truck.filter(e=>cleanId(e.Unitid).toUpperCase()===u.toUpperCase());
-    const certs=D.certs.filter(c=>(c.field_3||'').toUpperCase()===u.toUpperCase());
-    const last=entries[entries.length-1]||{};
-    return `<button class="btn" onclick="nav('containers')" style="margin-bottom:16px;">&#8592; ${t('back')}</button>
-    <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:24px;"><div><h1 style="font-size:24px;">${esc(u)}</h1><p style="color:var(--text-secondary);margin-top:4px;">${last.Kunde?'Customer: '+esc(last.Kunde):''} ${last.Vognmand?'&middot; Carrier: '+esc(exName(last.Vognmand)):''}</p></div><span class="badge ${last.Status==='Lukket'?'badge-green':'badge-amber'}" style="font-size:14px;padding:8px 16px;">${esc(last.Status||'Active')}</span></div>
-    <div class="tabs"><div class="tab active" onclick="showTab('ov')">Movements (${entries.length})</div><div class="tab" onclick="showTab('ce')">Certificates (${certs.length})</div></div>
-    <div id="dtab">${dtOv(entries)}</div>`;
+    if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
+    return `<table class="data-table"><thead><tr>${thSort('containers','løbenr.','No.')}${thSort('containers','Ejerskab','Ownership')}${thSort('containers','Købsdato','Purchase Date')}${thSort('containers','Effekt','Type')}${thSort('containers','Præfix','ID')}${thSort('containers','Firma','Company')}${thSort('containers','Købspris','Purchase Price')}${thSort('containers','Lejer','Lessee')}${thSort('containers','Udlej.dato','Rental Date')}</tr></thead><tbody>
+    ${filtered.map(e=>`<tr><td>${esc(e['løbenr.']||'-')}</td><td>${esc(e['Ejerskab']||'-')}</td><td>${fmtDate(e['Købsdato'])}</td><td>${esc(e['Effekt']||'-')}</td><td class="container-number">${esc((e['Præfix']||'') + ' ' + (e['958112-5']||''))}</td><td>${esc(e['Firma']||'-')}</td><td>${esc(e['Købspris']||'-')}</td><td>${esc(e['Lejer']||'-')}</td><td>${fmtDate(e['Udlej.dato'])}</td></tr>`).join('')}</tbody></table>`;
 }
-function showTab(t){document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',(t==='ov'&&i===0)||(t==='ce'&&i===1)));const u=selUnit;document.getElementById('dtab').innerHTML=t==='ov'?dtOv(D.truck.filter(e=>cleanId(e.Unitid).toUpperCase()===u.toUpperCase())):dtCe(D.certs.filter(c=>(c.field_3||'').toUpperCase()===u.toUpperCase()));}
-function dtOv(entries){return `<div class="card"><h3 style="margin-bottom:16px;">Movement History</h3><table class="data-table"><thead><tr><th>${t('date')}</th><th>${t('inOut')}</th><th>${t('who')}</th><th>${t('carrier')}</th><th>${t('service')}</th><th>${t('comment')}</th><th>${t('bookkeeping')}</th><th>${t('status')}</th></tr></thead><tbody>${entries.slice().reverse().map(e=>`<tr><td>${fmtDate(e.Dato)}</td><td>${isIn(e.Ind_x002f_ud)?'<span class="badge badge-green">IN</span>':'<span class="badge badge-amber">OUT</span>'}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(exName(e.Vognmand))}</td><td>${svcVal(e.Service)?`<span class="badge badge-${svcColor(e.Service)}">${esc(svcVal(e.Service))}</span>`:'-'}</td><td>${esc(e.Kommentar||e.Andet||'-')}</td><td>${esc(e.Bogholderikommentar||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'-')}</span></td></tr>`).join('')}</tbody></table></div>`;}
-function dtCe(certs){if(!certs.length)return`<div class="card"><div class="empty-state">No certificates for this unit.</div></div>`;return`<div class="card"><h3 style="margin-bottom:16px;">Certificates</h3><table class="data-table"><thead><tr><th>Cert No.</th><th>${t('client')}</th><th>${t('type')}</th><th>${t('who')}</th><th>${t('approved')}</th></tr></thead><tbody>${certs.map(c=>`<tr><td class="container-number">${esc(c.Title||'-')}</td><td>${esc(exName(c.field_1))}</td><td>${esc(c.field_5||'-')}</td><td>${esc(exName(c.field_7))}</td><td>${c.Godkendtafvist?'<span class="badge badge-green">&#10003;</span>':'<span class="badge badge-gray">-</span>'}</td></tr>`).join('')}</tbody></table></div>`;}
 
 // === CERTIFICATES ===
-function rCerts(){
-    const cls=[...new Set(D.certs.map(c=>exName(c.field_1)).filter(x=>x&&x!=='-'))];
-    return `<div class="page-header"><div><h1>${t('certificates')}</h1><p>${D.certs.length} certificates</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.certs,'certificates.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-cert')">${t('addNew')}</button>`:''}</div></div>
-    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="ceSearch" onkeyup="fltCe()"><select id="fCeClient" onchange="fltCe()"><option value="">All Clients</option>${cls.map(c=>`<option>${esc(c)}</option>`).join('')}</select></div><div id="ceTbl">${ceTbl(D.certs)}</div></div>`;
+function rCerts() {
+    const data = sortData(D.certificates, 'certificates');
+    return `<div class="page-header"><div><h1>${t('certificates')}</h1><p>${D.certificates.length} certificates</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.certificates,'certifikatnumre.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-cert')">+ New Certificate</button>`:''}</div></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="ceSearch" onkeyup="render()"></div>
+    <div id="ceTbl">${ceTbl(data)}</div></div>`;
 }
-function ceTbl(data){if(!data.length)return`<div class="empty-state">${t('noData')}</div>`;const sorted=sortData(data,'certs');return`<table class="data-table"><thead><tr>${thSort('certs','Title','Cert No.')}${thSort('certs','field_1',t('client'))}${thSort('certs','field_3',t('unitId'))}${thSort('certs','field_4','CSC')}${thSort('certs','field_5',t('inspType'))}${thSort('certs','field_7',t('who'))}${thSort('certs','field_6',t('invoiceNo'))}${thSort('certs','Godkendtafvist',t('approved'))}</tr></thead><tbody>${sorted.map(c=>`<tr onclick="${c.field_3?`nav('detail','${esc(c.field_3)}')`:''}" style="${c.field_3?'':'cursor:default'}"><td class="container-number">${esc(c.Title||'-')}</td><td>${esc(exName(c.field_1))}</td><td>${esc(c.field_3||'-')}</td><td>${esc(c.field_4||'-')}</td><td>${esc(c.field_5||'-')}</td><td>${esc(exName(c.field_7))}</td><td>${esc(c.field_6||'-')}</td><td>${c.Godkendtafvist?'<span class="badge badge-green">&#10003;</span>':'<span class="badge badge-gray">-</span>'}</td></tr>`).join('')}</tbody></table>`;}
-function fltCe(){ document.getElementById('ceTbl').innerHTML=ceTbl(getFilteredCerts()); }
+function ceTbl(data) {
+    const q = (document.getElementById('ceSearch')?.value || '').toLowerCase();
+    const filtered = data.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
+
+    if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
+    return `<table class="data-table"><thead><tr>${thSort('certificates','Certifikat nr.','Cert No.')}${thSort('certificates','Kunde','Customer')}${thSort('certificates','Type','Type')}${thSort('certificates','Måned','Month')}${thSort('certificates','UNIT','Unit')}${thSort('certificates','Sling nr.','Sling No.')}${thSort('certificates','Ordre.nr','Order No.')}${thSort('certificates','Hvem','Who')}</tr></thead><tbody>
+    ${filtered.map(c=>`<tr><td class="container-number">${esc(c['Certifikat nr.']||'-')}</td><td>${esc(c['Kunde']||'-')}</td><td>${esc(c['Type']||'-')}</td><td>${esc(c['Måned']||'-')}</td><td>${esc(c['UNIT']||'-')}</td><td>${esc(c['Sling nr.']||'-')}</td><td>${esc(c['Ordre.nr']||'-')}</td><td>${esc(c['Hvem']||'-')}</td></tr>`).join('')}</tbody></table>`;
+}
 
 // === TASKS ===
-function rTasks(){
-    const tasks=D.truck.filter(e=>svcVal(e.Service));const svcs=[...new Set(tasks.map(e=>svcVal(e.Service)).filter(Boolean))];
-    return `<div class="page-header"><div><h1>${t('tasks')}</h1><p>${tasks.length} service tasks</p></div><button class="btn" onclick="exportCSV(tasks,'tasks.csv')">&#8681; ${t('exportExcel')}</button></div>
-    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="tSearch" onkeyup="fltT()"><select id="fTSvc" onchange="fltT()"><option value="">${t('allTypes')}</option>${svcs.map(s=>`<option>${esc(s)}</option>`).join('')}</select></div><div id="tTbl">${tTbl(tasks)}</div></div>`;
+function rTasks() {
+    const data = sortData(D.tasks, 'tasks');
+    return `<div class="page-header"><div><h1>${t('tasks')}</h1><p>${D.tasks.length} tasks</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.tasks,'opgaveliste.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-task')">+ New Task</button>`:''}</div></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="tSearch" onkeyup="render()"></div>
+    <div id="tTbl">${tTbl(data)}</div></div>`;
 }
-function tTbl(data){if(!data.length)return`<div class="empty-state">${t('noData')}</div>`;const sorted=sortData(data,'tasks');return`<table class="data-table"><thead><tr>${thSort('tasks','Dato',t('date'))}${thSort('tasks','Unitid',t('unitId'))}${thSort('tasks','Service',t('service'))}${thSort('tasks','Kunde',t('customer'))}${thSort('tasks','Hvem',t('who'))}${thSort('tasks','Andet',t('comment'))}${thSort('tasks','Status',t('status'))}</tr></thead><tbody>${sorted.map(e=>`<tr onclick="${cleanId(e.Unitid)?`nav('detail','${esc(cleanId(e.Unitid))}')`:''}" style="${cleanId(e.Unitid)?'':'cursor:default'}"><td>${fmtDate(e.Dato)}</td><td class="container-number">${esc(cleanId(e.Unitid)||'-')}</td><td><span class="badge badge-${svcColor(e.Service)}">${esc(svcVal(e.Service))}</span></td><td>${esc(e.Kunde||'-')}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(e.Kommentar||e.Andet||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table>`;}
-function fltT(){ document.getElementById('tTbl').innerHTML=tTbl(getFilteredTasks()); }
+function tTbl(data) {
+    const q = (document.getElementById('tSearch')?.value || '').toLowerCase();
+    const filtered = data.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
+
+    if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
+    return `<table class="data-table"><thead><tr>${thSort('tasks','Job nr','Job No.')}${thSort('tasks','job modtaget','Received')}${thSort('tasks','Beskrivelse','Description')}${thSort('tasks','Kunde','Customer')}</tr></thead><tbody>
+    ${filtered.map(t=>`<tr><td class="container-number">${esc(t['Job nr']||'-')}</td><td>${fmtDate(t['job modtaget'])}</td><td>${esc(t['Beskrivelse']||'-')}</td><td>${esc(t['Kunde']||'-')}</td></tr>`).join('')}</tbody></table>`;
+}
+
+// === LOOSEGEAR ===
+function rLoosegear() {
+    const data = sortData(D.loosegear, 'loosegear');
+    return `<div class="page-header"><div><h1>${t('loosegear')}</h1><p>${D.loosegear.length} items</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.loosegear,'loosegear.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-loosegear')">+ Add Loosegear</button>`:''}</div></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="lgSearch" onkeyup="render()"></div>
+    <div id="lgTbl">${lgTbl(data)}</div></div>`;
+}
+function lgTbl(data) {
+    const q = (document.getElementById('lgSearch')?.value || '').toLowerCase();
+    const filtered = data.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
+
+    if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
+    return `<table class="data-table"><thead><tr>${thSort('loosegear','Certifikat Nr','Cert No.')}${thSort('loosegear','Kunde','Customer')}${thSort('loosegear','Inspektions dato','Inspection Date')}${thSort('loosegear','Beskrivelse','Description')}${thSort('loosegear','Hvem','Who')}</tr></thead><tbody>
+    ${filtered.map(l=>`<tr><td class="container-number">${esc(l['Certifikat Nr']||'-')}</td><td>${esc(l['Kunde']||'-')}</td><td>${fmtDate(l['Inspektions dato'])}</td><td>${esc(l['Beskrivelse']||'-')}</td><td>${esc(l['Hvem']||'-')}</td></tr>`).join('')}</tbody></table>`;
+}
 
 // === TIMELINE ===
-function rTimeline(){
-    const all=[...D.truck.map(e=>({t:'truck',d:e.Dato,data:e})),...D.certs.map(c=>({t:'cert',d:c.Created||c.Dato,data:c}))].sort((a,b)=>new Date(b.d||0)-new Date(a.d||0)).slice(0,50);
-    const grp={};all.forEach(i=>{const k=fmtDate(i.d);if(!grp[k])grp[k]=[];grp[k].push(i);});
-    return `<div class="page-header"><div><h1>${t('timeline')}</h1><p>Event history across all containers</p></div></div><div class="card">
-    ${Object.entries(grp).map(([d,items])=>`<div class="timeline-date">&#128197; ${d}</div>${items.map(i=>{if(i.t==='truck'){const e=i.data;return`<div class="timeline-entry"><div class="timeline-dot ${isIn(e.Ind_x002f_ud)?'green':'amber'}"></div><div class="timeline-content"><h4>${isIn(e.Ind_x002f_ud)?'Container In':'Container Out'} &mdash; ${esc(cleanId(e.Unitid)||'-')}</h4><p>${esc(exName(e.Hvem))} ${svcVal(e.Service)?'&middot; '+esc(svcVal(e.Service)):''} ${e.Kunde?'&middot; '+esc(e.Kunde):''}</p>${e.Kommentar?`<p style="font-style:italic;margin-top:4px;">${esc(e.Kommentar)}</p>`:''}</div><span class="badge badge-${svcColor(e.Service)}" style="margin-left:auto;">${esc(svcVal(e.Service)||'Movement')}</span></div>`;}else{const c=i.data;return`<div class="timeline-entry"><div class="timeline-dot blue"></div><div class="timeline-content"><h4>Certificate: ${esc(c.Title||'-')}</h4><p>${esc(c.field_3||'-')} &middot; ${esc(exName(c.field_1))} &middot; ${esc(exName(c.field_7))}</p></div><span class="badge badge-blue" style="margin-left:auto;">Certificate</span></div>`;}}).join('')}`).join('')}</div>`;
+function rTimeline() {
+    const sorted = sortData(D.timeline, 'timeline');
+    return `<div class="page-header"><div><h1>${t('timeline')}</h1><p>${D.timeline.length} movements</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.timeline,'timeline.csv')">&#8681; ${t('exportExcel')}</button></div></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="tlSearch" onkeyup="render()"></div>
+    <div id="tlTbl">${tlTbl(sorted)}</div></div>`;
+}
+function tlTbl(data) {
+    const q = (document.getElementById('tlSearch')?.value || '').toLowerCase();
+    const filtered = data.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
+
+    if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
+    return `<table class="data-table"><thead><tr>${thSort('timeline','Dato',t('date'))}${thSort('timeline','Ind_x002f_ud',t('inOut'))}${thSort('timeline','Unitid',t('unitId'))}${thSort('timeline','Vognmand',t('carrier'))}${thSort('timeline','Kunde',t('customer'))}${thSort('timeline','Service',t('service'))}${thSort('timeline','Hvem',t('who'))}${thSort('timeline','Bogholderikommentar',t('bookkeeping'))}${thSort('timeline','Status',t('status'))}</tr></thead><tbody>
+    ${filtered.map(e=>`<tr><td>${fmtDate(e.Dato)}</td><td>${isIn(e.Ind_x002f_ud)?'<span class="badge badge-green">IN</span>':isOut(e.Ind_x002f_ud)?'<span class="badge badge-amber">OUT</span>':'<span class="badge badge-gray">'+esc(String(e.Ind_x002f_ud||'-'))+'</span>'}</td><td class="container-number">${esc(e.Unitid||'-')}</td><td>${esc(exName(e.Vognmand))}</td><td>${esc(e.Kunde||'-')}</td><td>${svcVal(e.Service)?`<span class="badge badge-${svcColor(e.Service)}">${esc(svcVal(e.Service))}</span>`:'-'}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(e.Bogholderikommentar||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table>`;
 }
 
 // === ADMIN ===
-function rAdmin(){
-    const svcs=[...new Set(D.truck.map(e=>svcVal(e.Service)).filter(Boolean))];
-    const stats=[...new Set(D.truck.map(e=>e.Status).filter(Boolean))];
-    const carriers=[...new Set(D.truck.map(e=>exName(e.Vognmand)).filter(x=>x&&x!=='-'))];
-    return `<div class="page-header"><div><h1>${t('admin')}</h1><p>System administration and data overview</p></div><button class="btn btn-primary" onclick="loadData().then(render)">&#8635; Refresh Data</button></div>
-    <div class="two-col">
-        <div class="card"><h3>Service Types</h3><p style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;">From Truckliste</p><div class="tag-list">${svcs.map(s=>`<div class="tag">${esc(s)}</div>`).join('')}</div></div>
-        <div class="card"><h3>Statuses</h3><p style="color:var(--text-secondary);font-size:13px;margin-bottom:8px;">Currently in use</p><div class="tag-list">${stats.map(s=>`<div class="tag">${esc(s)}</div>`).join('')}</div></div>
-        <div class="card"><h3>Carriers (Vognm&aelig;nd)</h3><div class="tag-list">${carriers.map(c=>`<div class="tag">${esc(c)}</div>`).join('')}</div></div>
-        <div class="card"><h3>Clients</h3><div class="tag-list">${D.clients.map(c=>`<div class="tag">${esc(c.Clientname||c.Title||'-')}</div>`).join('')}</div></div>
-    </div>
-    <div class="card" style="margin-top:24px;"><h3 style="margin-bottom:12px;">Data Sources</h3><table class="data-table"><thead><tr><th>List</th><th>Items</th><th>Link</th></tr></thead><tbody>
-        <tr><td><strong>Truckliste</strong></td><td>${D.truck.length}</td><td><a href="https://${SP_HOST}${SP_PATH}/Lists/Truckliste" target="_blank">Open in SharePoint</a></td></tr>
-        <tr><td><strong>Certifikatnumre</strong></td><td>${D.certs.length}</td><td><a href="https://${SP_HOST}${SP_PATH}/Lists/Certifikatnumre" target="_blank">Open in SharePoint</a></td></tr>
-        <tr><td><strong>Clients</strong></td><td>${D.clients.length}</td><td><a href="https://${SP_HOST}${SP_PATH}/Lists/Clients" target="_blank">Open in SharePoint</a></td></tr>
-    </tbody></table></div>`;
+function rAdmin() {
+    return `<div class="page-header"><div><h1>${t('admin')}</h1><p>System administration</p></div></div>
+    <div class="card"><h3>Admin Panel</h3><p>Manage users and system settings.</p></div>`;
 }
 
-// === FORMS ===
-function rNewEntry(){
-    return `<button class="btn" onclick="nav('containers')" style="margin-bottom:16px;">&#8592; ${t('back')}</button>
-    <div class="card" style="max-width:800px;"><h2 style="margin-bottom:8px;">New Trucklist Entry</h2><p style="color:var(--text-secondary);margin-bottom:24px;">Register a container movement</p>
-    <div class="form-row"><div class="form-group"><label>Unit ID <span class="req">*</span></label><input id="nUid" placeholder="e.g. CLDU 962609-7"></div><div class="form-group"><label>Unit ID 1</label><input id="nUid1" placeholder="Description"></div></div>
-    <div class="form-row"><div class="form-group"><label>In/Out <span class="req">*</span></label><select id="nIO"><option value="1">In (1)</option><option value="0">Out (0)</option></select></div><div class="form-group"><label>Customer</label><input id="nKunde" placeholder="Customer name"></div></div>
-    <div class="form-row"><div class="form-group"><label>Service</label><select id="nSvc"><option value="">None</option><option>Reperation</option><option>Offhire</option><option>Vaskes</option><option>Inspektion</option></select></div><div class="form-group"><label>Status</label><select id="nStat"><option value="Lukket">Lukket</option><option value="">Open</option></select></div></div>
-    <div class="form-group"><label>Comment</label><textarea id="nCom" placeholder="Add a comment..."></textarea></div>
-    <div class="form-group"><label>Bookkeeping Ref</label><input id="nBook" placeholder="e.g. 21938"></div>
-    <div class="form-actions"><button class="btn" onclick="nav('containers')">Cancel</button><button class="btn btn-primary" onclick="submitEntry()">Create Entry</button></div></div>`;
+// === NEW ENTRY (Container) ===
+function rNewEntry() {
+    return `<div class="page-header"><div><h1>+ New Container</h1><p>Add a new container entry</p></div></div>
+    <div class="card"><form onsubmit="saveNewContainer(event)">
+        <div class="form-row">
+            <div class="form-group"><label>No. <span class="req">*</span></label><input type="text" id="f_lobenr" required></div>
+            <div class="form-group"><label>Ownership</label><input type="text" id="f_ejer"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Purchase Date</label><input type="date" id="f_koebsdato"></div>
+            <div class="form-group"><label>Type</label><input type="text" id="f_effekt"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Prefix</label><input type="text" id="f_prefix"></div>
+            <div class="form-group"><label>Serial (958112-5)</label><input type="text" id="f_serial"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Company</label><input type="text" id="f_firma"></div>
+            <div class="form-group"><label>Purchase Price</label><input type="text" id="f_pris"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Lessee</label><input type="text" id="f_lejer"></div>
+            <div class="form-group"><label>Rental Date</label><input type="date" id="f_udlej"></div>
+        </div>
+        <div class="form-actions"><button type="button" class="btn" onclick="nav('containers')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form></div>`;
 }
-async function submitEntry(){
-    const uid=document.getElementById('nUid').value;if(!uid){toast('Unit ID required','error');return;}
-    try{toast('Creating...','info');await addItem('Truckliste',{Unitid:uid,Unitid0:document.getElementById('nUid1').value,Ind_x002f_ud:document.getElementById('nIO').value,Kunde:document.getElementById('nKunde').value,Service:document.getElementById('nSvc').value,Status:document.getElementById('nStat').value,Kommentar:document.getElementById('nCom').value,Bogholderikommentar:document.getElementById('nBook').value});toast('Entry created!','success');await loadData();nav('containers');}catch(e){toast('Error: '+e.message,'error');}
+async function saveNewContainer(e) {
+    e.preventDefault();
+    try {
+        await addExcelRow('containers', [
+            document.getElementById('f_lobenr').value,
+            document.getElementById('f_ejer').value,
+            document.getElementById('f_koebsdato').value,
+            document.getElementById('f_effekt').value,
+            document.getElementById('f_prefix').value,
+            document.getElementById('f_serial').value,
+            '',
+            document.getElementById('f_firma').value,
+            '',
+            document.getElementById('f_pris').value,
+            '',
+            document.getElementById('f_udlej').value,
+            '',
+            '',
+            '',
+            '',
+            document.getElementById('f_lejer').value
+        ]);
+        toast('Container added','success');
+        await loadData();
+        nav('containers');
+    } catch(err) { toast('Error: '+err.message,'error'); }
 }
-function rNewCert(){
-    return `<button class="btn" onclick="nav('certificates')" style="margin-bottom:16px;">&#8592; ${t('back')}</button>
-    <div class="card" style="max-width:800px;"><h2 style="margin-bottom:8px;">New Certificate</h2><p style="color:var(--text-secondary);margin-bottom:24px;">Register a new certificate</p>
-    <div class="form-row"><div class="form-group"><label>Certificate Number <span class="req">*</span></label><input id="cTitle" placeholder="e.g. NJCO10086"></div><div class="form-group"><label>Cert Nr</label><input id="cNr" placeholder="Reference"></div></div>
-    <div class="form-row"><div class="form-group"><label>Unit ID</label><input id="cUid" placeholder="Container ID"></div><div class="form-group"><label>Unit ID 1</label><input id="cUid1"></div></div>
-    <div class="form-row"><div class="form-group"><label>CSC</label><input id="cCSC"></div><div class="form-group"><label>Inspection Type</label><input id="cInsp" placeholder="Type"></div></div>
-    <div class="form-group"><label>Comment</label><textarea id="cCom"></textarea></div>
-    <div class="form-actions"><button class="btn" onclick="nav('certificates')">Cancel</button><button class="btn btn-primary" onclick="submitCert()">Create Certificate</button></div></div>`;
+
+// === NEW CERT ===
+function rNewCert() {
+    return `<div class="page-header"><div><h1>+ New Certificate</h1><p>Record a new certificate</p></div></div>
+    <div class="card"><form onsubmit="saveNewCert(event)">
+        <div class="form-row">
+            <div class="form-group"><label>Cert No. <span class="req">*</span></label><input type="text" id="f_certno" required></div>
+            <div class="form-group"><label>Customer</label><input type="text" id="f_kunde"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Type</label><input type="text" id="f_type"></div>
+            <div class="form-group"><label>Month</label><input type="text" id="f_maaned"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Unit</label><input type="text" id="f_unit"></div>
+            <div class="form-group"><label>Sling No.</label><input type="text" id="f_sling"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Last 4 Years</label><input type="text" id="f_sidste4"></div>
+            <div class="form-group"><label>Order No.</label><input type="text" id="f_ordrenr"></div>
+        </div>
+        <div class="form-group"><label>Who</label><input type="text" id="f_hvem"></div>
+        <div class="form-actions"><button type="button" class="btn" onclick="nav('certificates')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form></div>`;
 }
-async function submitCert(){
-    const title=document.getElementById('cTitle').value;if(!title){toast('Certificate number required','error');return;}
-    try{toast('Creating...','info');await addItem('Certifikatnumre',{Title:title,field_3:document.getElementById('cUid').value,field_4:document.getElementById('cCSC').value,field_5:document.getElementById('cInsp').value});toast('Certificate created!','success');await loadData();nav('certificates');}catch(e){toast('Error: '+e.message,'error');}
+async function saveNewCert(e) {
+    e.preventDefault();
+    try {
+        await addExcelRow('certificates', [
+            document.getElementById('f_certno').value,
+            document.getElementById('f_kunde').value,
+            document.getElementById('f_type').value,
+            document.getElementById('f_maaned').value,
+            document.getElementById('f_unit').value,
+            document.getElementById('f_sling').value,
+            document.getElementById('f_sidste4').value,
+            document.getElementById('f_ordrenr').value,
+            document.getElementById('f_hvem').value
+        ]);
+        toast('Certificate added','success');
+        await loadData();
+        nav('certificates');
+    } catch(err) { toast('Error: '+err.message,'error'); }
+}
+
+// === NEW TASK ===
+function rNewTask() {
+    return `<div class="page-header"><div><h1>+ New Task</h1><p>Create a new task</p></div></div>
+    <div class="card"><form onsubmit="saveNewTask(event)">
+        <div class="form-row">
+            <div class="form-group"><label>Job No. <span class="req">*</span></label><input type="text" id="f_jobno" required></div>
+            <div class="form-group"><label>Received Date</label><input type="date" id="f_jobdat"></div>
+        </div>
+        <div class="form-group"><label>Description</label><textarea id="f_beskr"></textarea></div>
+        <div class="form-group"><label>Customer</label><input type="text" id="f_jobkunde"></div>
+        <div class="form-actions"><button type="button" class="btn" onclick="nav('tasks')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form></div>`;
+}
+async function saveNewTask(e) {
+    e.preventDefault();
+    try {
+        await addExcelRow('tasks', [
+            document.getElementById('f_jobno').value,
+            document.getElementById('f_jobdat').value,
+            document.getElementById('f_beskr').value,
+            document.getElementById('f_jobkunde').value
+        ]);
+        toast('Task added','success');
+        await loadData();
+        nav('tasks');
+    } catch(err) { toast('Error: '+err.message,'error'); }
+}
+
+// === NEW LOOSEGEAR ===
+function rNewLoosegear() {
+    return `<div class="page-header"><div><h1>+ Add Loosegear</h1><p>Record a new loosegear item</p></div></div>
+    <div class="card"><form onsubmit="saveNewLoosegear(event)">
+        <div class="form-row">
+            <div class="form-group"><label>Cert No. <span class="req">*</span></label><input type="text" id="f_lgcertno" required></div>
+            <div class="form-group"><label>Customer</label><input type="text" id="f_lgkunde"></div>
+        </div>
+        <div class="form-row">
+            <div class="form-group"><label>Inspection Date</label><input type="date" id="f_lgdato"></div>
+            <div class="form-group"><label>Description</label><input type="text" id="f_lgbeskr"></div>
+        </div>
+        <div class="form-group"><label>Who</label><input type="text" id="f_lghvem"></div>
+        <div class="form-actions"><button type="button" class="btn" onclick="nav('loosegear')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+    </form></div>`;
+}
+async function saveNewLoosegear(e) {
+    e.preventDefault();
+    try {
+        await addExcelRow('loosegear', [
+            document.getElementById('f_lgcertno').value,
+            document.getElementById('f_lgkunde').value,
+            document.getElementById('f_lgdato').value,
+            document.getElementById('f_lgbeskr').value,
+            document.getElementById('f_lghvem').value
+        ]);
+        toast('Loosegear item added','success');
+        await loadData();
+        nav('loosegear');
+    } catch(err) { toast('Error: '+err.message,'error'); }
 }
 
 // === INIT ===
-window.addEventListener('DOMContentLoaded', initAuth);
+document.addEventListener('DOMContentLoaded', initAuth);
 </script>
 </body>
 </html>
