@@ -182,6 +182,7 @@ const ADMIN_EMAILS = [
 let msal_app, account, siteId, page='dashboard', lang='en', selUnit=null;
 let userRole = 'viewer'; // 'admin' or 'viewer'
 let D = { truck:[], certs:[], clients:[] };
+let dataLoaded = false;
 
 // === i18n ===
 const L = {
@@ -222,8 +223,7 @@ async function onAuth() {
     if (userRole === 'viewer') {
         document.getElementById('viewOnlyBanner').classList.remove('hidden');
     }
-    await loadData();
-    render();
+    try { await loadData(); render(); } catch(e) { console.error('onAuth render error:',e); toast('Error loading: '+e.message,'error'); }
 }
 function isAdmin() { return userRole === 'admin'; }
 
@@ -265,13 +265,14 @@ async function loadData() {
         D.truck = a.map(i=>({id:i.id,...i.fields}));
         D.certs = b.map(i=>({id:i.id,...i.fields}));
         D.clients = c.map(i=>({id:i.id,...i.fields}));
+        dataLoaded = true;
         toast(`Loaded ${D.truck.length} entries, ${D.certs.length} certificates, ${D.clients.length} clients`,'success');
     } catch(e) { toast('Load error: '+e.message,'error'); }
 }
 
 // === NAV ===
-function nav(p,d) { if(!isAdmin()&&(p==='new-entry'||p==='new-cert'||p==='admin')){toast('Access denied — admin only','error');return;} page=p; if(d) selUnit=d; document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===p||(p==='detail'&&n.dataset.page==='containers'))); render(); window.scrollTo(0,0); }
-function render() { const el=document.getElementById('page'); el.innerHTML=({dashboard:rDash,containers:rContainers,detail:rDetail,certificates:rCerts,tasks:rTasks,timeline:rTimeline,admin:rAdmin,'new-entry':rNewEntry,'new-cert':rNewCert}[page]||rDash)(); }
+function nav(p,d) { if(!dataLoaded){toast('Still loading data, please wait...','info');return;} if(!isAdmin()&&(p==='new-entry'||p==='new-cert'||p==='admin')){toast('Access denied — admin only','error');return;} page=p; if(d) selUnit=d; document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===p||(p==='detail'&&n.dataset.page==='containers'))); render(); window.scrollTo(0,0); }
+function render() { const el=document.getElementById('page'); if(!dataLoaded){el.innerHTML=`<div class="loading"><div class="spinner"></div>${t('loading')}</div>`;return;} el.innerHTML=({dashboard:rDash,containers:rContainers,detail:rDetail,certificates:rCerts,tasks:rTasks,timeline:rTimeline,admin:rAdmin,'new-entry':rNewEntry,'new-cert':rNewCert}[page]||rDash)(); }
 
 // === HELPERS ===
 function esc(s){if(!s)return'';const d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
@@ -279,12 +280,12 @@ function fmtDate(s){if(!s)return'-';try{const d=new Date(s);return isNaN(d)?esc(
 function exName(v){if(!v)return'-';if(typeof v==='object'&&v.LookupValue)return v.LookupValue;const s=String(v);if(s.includes(';#')){const p=s.split(';#').filter(x=>x&&isNaN(x));return p.join(', ')||s;}return s;}
 function svcColor(s){if(!s)return'gray';const l=String(s).toLowerCase();if(l.includes('repe'))return'red';if(l.includes('offhire'))return'amber';if(l.includes('vask'))return'blue';if(l.includes('inspek'))return'purple';return'gray';}
 function toast(m,type){const c=document.getElementById('toastContainer'),t=document.createElement('div');t.className='toast toast-'+type;t.textContent=m;c.appendChild(t);setTimeout(()=>t.remove(),4000);}
-function doGlobalSearch(){const q=(document.getElementById('globalSearch').value||'').toUpperCase();if(!q)return;const f=D.truck.find(e=>(e.Unit_x0020_id||'').toUpperCase().includes(q)||(e.Unit_x0020_id1||'').toUpperCase().includes(q));if(f)nav('detail',f.Unit_x0020_id||f.Unit_x0020_id1);else toast('Not found: '+q,'info');}
+function doGlobalSearch(){const q=(document.getElementById('globalSearch').value||'').toUpperCase();if(!q)return;const f=D.truck.find(e=>(e.Unitid||'').toUpperCase().includes(q)||(e.Unitid0||'').toUpperCase().includes(q));if(f)nav('detail',f.Unitid||f.Unitid0);else toast('Not found: '+q,'info');}
 function exportCSV(data,fn){if(!data.length){toast('No data','info');return;}const ks=Object.keys(data[0]).filter(k=>!k.startsWith('@')&&!k.startsWith('odata')&&k!=='id');const csv=[ks.join(','),...data.map(r=>ks.map(k=>`"${String(r[k]||'').replace(/"/g,'""')}"`).join(','))].join('\n');const b=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});const l=document.createElement('a');l.href=URL.createObjectURL(b);l.download=fn;l.click();toast('Exported '+data.length+' rows','success');}
 
 // === DASHBOARD ===
 function rDash() {
-    const uids = new Set(D.truck.filter(e=>e.Unit_x0020_id).map(e=>(e.Unit_x0020_id||'').toUpperCase()));
+    const uids = new Set(D.truck.filter(e=>e.Unitid).map(e=>(e.Unitid||'').toUpperCase()));
     const open = D.truck.filter(e=>e.Status!=='Lukket').length;
     const recent = D.truck.slice(-10).reverse();
     const rcerts = D.certs.slice(-5).reverse();
@@ -298,11 +299,11 @@ function rDash() {
     <div class="two-col">
         <div class="card"><div class="card-header"><h3>Recent Activity</h3></div>
         ${recent.length?`<table class="data-table"><thead><tr><th>${t('date')}</th><th>${t('unitId')}</th><th>${t('who')}</th><th>${t('service')}</th><th>${t('status')}</th></tr></thead><tbody>
-        ${recent.map(e=>`<tr onclick="nav('detail','${esc(e.Unit_x0020_id||e.Unit_x0020_id1||'')}')"><td>${fmtDate(e.Dato)}</td><td class="container-number">${esc(e.Unit_x0020_id||e.Unit_x0020_id1||'-')}</td><td>${esc(exName(e.Hvem))}</td><td>${e.Service?`<span class="badge badge-${svcColor(e.Service)}">${esc(e.Service)}</span>`:'-'}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table>`:`<div class="empty-state">${t('noData')}</div>`}
+        ${recent.map(e=>`<tr onclick="nav('detail','${esc(e.Unitid||e.Unitid0||'')}')"><td>${fmtDate(e.Dato)}</td><td class="container-number">${esc(e.Unitid||e.Unitid0||'-')}</td><td>${esc(exName(e.Hvem))}</td><td>${e.Service?`<span class="badge badge-${svcColor(e.Service)}">${esc(e.Service)}</span>`:'-'}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table>`:`<div class="empty-state">${t('noData')}</div>`}
         </div>
         <div class="card"><div class="card-header"><h3>Recent Certificates</h3></div>
         ${rcerts.length?`<table class="data-table"><thead><tr><th>${t('certNo')}</th><th>${t('unitId')}</th><th>${t('client')}</th><th>${t('who')}</th></tr></thead><tbody>
-        ${rcerts.map(c=>`<tr><td class="container-number">${esc(c.Title||'-')}</td><td>${esc(c.Unit_x0020_id||c.Unit_x0020_id1||'-')}</td><td>${esc(exName(c.Client))}</td><td>${esc(exName(c.Hvem))}</td></tr>`).join('')}</tbody></table>`:`<div class="empty-state">${t('noData')}</div>`}
+        ${rcerts.map(c=>`<tr><td class="container-number">${esc(c.Title||'-')}</td><td>${esc(c.field_3||'-')}</td><td>${esc(exName(c.field_1))}</td><td>${esc(exName(c.field_7))}</td></tr>`).join('')}</tbody></table>`:`<div class="empty-state">${t('noData')}</div>`}
         </div>
     </div>`;
 }
@@ -314,10 +315,12 @@ function rContainers() {
     return `<div class="page-header"><div><h1>${t('containers')}</h1><p>${D.truck.length} entries</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.truck,'trucklist.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-entry')">${t('addNew')}</button>`:''}</div></div>
     <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="cSearch" onkeyup="fltC()"><select id="fSvc" onchange="fltC()"><option value="">${t('allTypes')}</option>${svcs.map(s=>`<option>${esc(s)}</option>`).join('')}</select><select id="fStat" onchange="fltC()"><option value="">${t('allStatuses')}</option>${stats.map(s=>`<option>${esc(s)}</option>`).join('')}</select></div><div id="cTbl">${cTbl(D.truck)}</div></div>`;
 }
+function isIn(v){return v==='Ind'||v==='1'||v===1;}
+function isOut(v){return v==='Ud'||v==='0'||v===0;}
 function cTbl(data) {
     if(!data.length) return `<div class="empty-state">${t('noData')}</div>`;
     return `<table class="data-table"><thead><tr><th>${t('date')}</th><th>${t('inOut')}</th><th>${t('unitId')}</th><th>Unit ID 1</th><th>${t('carrier')}</th><th>${t('customer')}</th><th>${t('service')}</th><th>${t('who')}</th><th>${t('bookkeeping')}</th><th>${t('status')}</th></tr></thead><tbody>
-    ${data.slice().reverse().map(e=>`<tr onclick="nav('detail','${esc(e.Unit_x0020_id||e.Unit_x0020_id1||'')}')"><td>${fmtDate(e.Dato)}</td><td>${e.Ind_x002f_ud==1?'<span class="badge badge-green">IN</span>':e.Ind_x002f_ud=='0'||e.Ind_x002f_ud==0?'<span class="badge badge-amber">OUT</span>':'<span class="badge badge-gray">'+esc(String(e.Ind_x002f_ud||'-'))+'</span>'}</td><td class="container-number">${esc(e.Unit_x0020_id||'-')}</td><td>${esc(e.Unit_x0020_id1||'-')}</td><td>${esc(exName(e.Vognmand))}</td><td>${esc(e.Kunde||'-')}</td><td>${e.Service?`<span class="badge badge-${svcColor(e.Service)}">${esc(e.Service)}</span>`:'-'}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(e.Bogholderi_x0020_kommentar||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table>`;
+    ${data.slice().reverse().map(e=>`<tr onclick="nav('detail','${esc(e.Unitid||e.Unitid0||'')}')"><td>${fmtDate(e.Dato)}</td><td>${isIn(e.Ind_x002f_ud)?'<span class="badge badge-green">IN</span>':isOut(e.Ind_x002f_ud)?'<span class="badge badge-amber">OUT</span>':'<span class="badge badge-gray">'+esc(String(e.Ind_x002f_ud||'-'))+'</span>'}</td><td class="container-number">${esc(e.Unitid||'-')}</td><td>${esc(e.Unitid0||'-')}</td><td>${esc(exName(e.Vognmand))}</td><td>${esc(e.Kunde||'-')}</td><td>${e.Service?`<span class="badge badge-${svcColor(e.Service)}">${esc(e.Service)}</span>`:'-'}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(e.Bogholderikommentar||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table>`;
 }
 function fltC() {
     const q=(document.getElementById('cSearch').value||'').toLowerCase(), svc=document.getElementById('fSvc').value, st=document.getElementById('fStat').value;
@@ -326,26 +329,26 @@ function fltC() {
 
 // === DETAIL ===
 function rDetail() {
-    const u=selUnit, entries=D.truck.filter(e=>(e.Unit_x0020_id||'').toUpperCase()===u.toUpperCase()||(e.Unit_x0020_id1||'').toUpperCase()===u.toUpperCase());
-    const certs=D.certs.filter(c=>(c.Unit_x0020_id||'').toUpperCase()===u.toUpperCase()||(c.Unit_x0020_id1||'').toUpperCase()===u.toUpperCase());
+    const u=selUnit, entries=D.truck.filter(e=>(e.Unitid||'').toUpperCase()===u.toUpperCase()||(e.Unitid0||'').toUpperCase()===u.toUpperCase());
+    const certs=D.certs.filter(c=>(c.field_3||'').toUpperCase()===u.toUpperCase());
     const last=entries[entries.length-1]||{};
     return `<button class="btn" onclick="nav('containers')" style="margin-bottom:16px;">&#8592; ${t('back')}</button>
     <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:24px;"><div><h1 style="font-size:24px;">${esc(u)}</h1><p style="color:var(--text-secondary);margin-top:4px;">${last.Kunde?'Customer: '+esc(last.Kunde):''} ${last.Vognmand?'&middot; Carrier: '+esc(exName(last.Vognmand)):''}</p></div><span class="badge ${last.Status==='Lukket'?'badge-green':'badge-amber'}" style="font-size:14px;padding:8px 16px;">${esc(last.Status||'Active')}</span></div>
     <div class="tabs"><div class="tab active" onclick="showTab('ov')">Movements (${entries.length})</div><div class="tab" onclick="showTab('ce')">Certificates (${certs.length})</div></div>
     <div id="dtab">${dtOv(entries)}</div>`;
 }
-function showTab(t){document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',(t==='ov'&&i===0)||(t==='ce'&&i===1)));const u=selUnit;document.getElementById('dtab').innerHTML=t==='ov'?dtOv(D.truck.filter(e=>(e.Unit_x0020_id||'').toUpperCase()===u.toUpperCase()||(e.Unit_x0020_id1||'').toUpperCase()===u.toUpperCase())):dtCe(D.certs.filter(c=>(c.Unit_x0020_id||'').toUpperCase()===u.toUpperCase()||(c.Unit_x0020_id1||'').toUpperCase()===u.toUpperCase()));}
-function dtOv(entries){return `<div class="card"><h3 style="margin-bottom:16px;">Movement History</h3><table class="data-table"><thead><tr><th>${t('date')}</th><th>${t('inOut')}</th><th>${t('who')}</th><th>${t('carrier')}</th><th>${t('service')}</th><th>${t('comment')}</th><th>${t('bookkeeping')}</th><th>${t('status')}</th></tr></thead><tbody>${entries.slice().reverse().map(e=>`<tr><td>${fmtDate(e.Dato)}</td><td>${e.Ind_x002f_ud==1?'<span class="badge badge-green">IN</span>':'<span class="badge badge-amber">OUT</span>'}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(exName(e.Vognmand))}</td><td>${e.Service?`<span class="badge badge-${svcColor(e.Service)}">${esc(e.Service)}</span>`:'-'}</td><td>${esc(e.Kommentar||'-')}</td><td>${esc(e.Bogholderi_x0020_kommentar||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'-')}</span></td></tr>`).join('')}</tbody></table></div>`;}
-function dtCe(certs){if(!certs.length)return`<div class="card"><div class="empty-state">No certificates for this unit.</div></div>`;return`<div class="card"><h3 style="margin-bottom:16px;">Certificates</h3><table class="data-table"><thead><tr><th>Title</th><th>Cert Nr</th><th>${t('client')}</th><th>${t('type')}</th><th>${t('who')}</th><th>${t('approved')}</th></tr></thead><tbody>${certs.map(c=>`<tr><td class="container-number">${esc(c.Title||'-')}</td><td>${esc(c.Certnr||'-')}</td><td>${esc(exName(c.Client))}</td><td>${esc(c.Type1||'-')}</td><td>${esc(exName(c.Hvem))}</td><td>${c.Godkendt?'<span class="badge badge-green">&#10003;</span>':'<span class="badge badge-gray">-</span>'}</td></tr>`).join('')}</tbody></table></div>`;}
+function showTab(t){document.querySelectorAll('.tab').forEach((el,i)=>el.classList.toggle('active',(t==='ov'&&i===0)||(t==='ce'&&i===1)));const u=selUnit;document.getElementById('dtab').innerHTML=t==='ov'?dtOv(D.truck.filter(e=>(e.Unitid||'').toUpperCase()===u.toUpperCase()||(e.Unitid0||'').toUpperCase()===u.toUpperCase())):dtCe(D.certs.filter(c=>(c.field_3||'').toUpperCase()===u.toUpperCase()));}
+function dtOv(entries){return `<div class="card"><h3 style="margin-bottom:16px;">Movement History</h3><table class="data-table"><thead><tr><th>${t('date')}</th><th>${t('inOut')}</th><th>${t('who')}</th><th>${t('carrier')}</th><th>${t('service')}</th><th>${t('comment')}</th><th>${t('bookkeeping')}</th><th>${t('status')}</th></tr></thead><tbody>${entries.slice().reverse().map(e=>`<tr><td>${fmtDate(e.Dato)}</td><td>${isIn(e.Ind_x002f_ud)?'<span class="badge badge-green">IN</span>':'<span class="badge badge-amber">OUT</span>'}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(exName(e.Vognmand))}</td><td>${e.Service?`<span class="badge badge-${svcColor(e.Service)}">${esc(e.Service)}</span>`:'-'}</td><td>${esc(e.Kommentar||'-')}</td><td>${esc(e.Bogholderikommentar||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'-')}</span></td></tr>`).join('')}</tbody></table></div>`;}
+function dtCe(certs){if(!certs.length)return`<div class="card"><div class="empty-state">No certificates for this unit.</div></div>`;return`<div class="card"><h3 style="margin-bottom:16px;">Certificates</h3><table class="data-table"><thead><tr><th>Cert No.</th><th>${t('client')}</th><th>${t('type')}</th><th>${t('who')}</th><th>${t('approved')}</th></tr></thead><tbody>${certs.map(c=>`<tr><td class="container-number">${esc(c.Title||'-')}</td><td>${esc(exName(c.field_1))}</td><td>${esc(c.field_5||'-')}</td><td>${esc(exName(c.field_7))}</td><td>${c.Godkendtafvist?'<span class="badge badge-green">&#10003;</span>':'<span class="badge badge-gray">-</span>'}</td></tr>`).join('')}</tbody></table></div>`;}
 
 // === CERTIFICATES ===
 function rCerts(){
-    const cls=[...new Set(D.certs.map(c=>exName(c.Client)).filter(x=>x&&x!=='-'))];
+    const cls=[...new Set(D.certs.map(c=>exName(c.field_1)).filter(x=>x&&x!=='-'))];
     return `<div class="page-header"><div><h1>${t('certificates')}</h1><p>${D.certs.length} certificates</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.certs,'certificates.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-cert')">${t('addNew')}</button>`:''}</div></div>
     <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="ceSearch" onkeyup="fltCe()"><select id="fCeClient" onchange="fltCe()"><option value="">All Clients</option>${cls.map(c=>`<option>${esc(c)}</option>`).join('')}</select></div><div id="ceTbl">${ceTbl(D.certs)}</div></div>`;
 }
-function ceTbl(data){if(!data.length)return`<div class="empty-state">${t('noData')}</div>`;return`<table class="data-table"><thead><tr><th>Title</th><th>Cert Nr</th><th>${t('client')}</th><th>${t('unitId')}</th><th>CSC</th><th>${t('inspType')}</th><th>${t('who')}</th><th>${t('invoiceNo')}</th><th>${t('approved')}</th></tr></thead><tbody>${data.slice().reverse().map(c=>`<tr onclick="nav('detail','${esc(c.Unit_x0020_id||c.Unit_x0020_id1||'')}')"><td class="container-number">${esc(c.Title||'-')}</td><td>${esc(c.Certnr||'-')}</td><td>${esc(exName(c.Client))}</td><td>${esc(c.Unit_x0020_id||c.Unit_x0020_id1||'-')}</td><td>${esc(c.CSC||'-')}</td><td>${esc(c.Inspektionstype||'-')}</td><td>${esc(exName(c.Hvem))}</td><td>${esc(c.Faktura_x0020_nr_x002e_||'-')}</td><td>${c.Godkendt?'<span class="badge badge-green">&#10003;</span>':'<span class="badge badge-gray">-</span>'}</td></tr>`).join('')}</tbody></table>`;}
-function fltCe(){const q=(document.getElementById('ceSearch').value||'').toLowerCase(),cl=document.getElementById('fCeClient').value;document.getElementById('ceTbl').innerHTML=ceTbl(D.certs.filter(c=>{if(q&&!JSON.stringify(c).toLowerCase().includes(q))return false;if(cl&&exName(c.Client)!==cl)return false;return true;}));}
+function ceTbl(data){if(!data.length)return`<div class="empty-state">${t('noData')}</div>`;return`<table class="data-table"><thead><tr><th>Cert No.</th><th>${t('client')}</th><th>${t('unitId')}</th><th>CSC</th><th>${t('inspType')}</th><th>${t('who')}</th><th>${t('invoiceNo')}</th><th>${t('approved')}</th></tr></thead><tbody>${data.slice().reverse().map(c=>`<tr onclick="nav('detail','${esc(c.field_3||'')}')"><td class="container-number">${esc(c.Title||'-')}</td><td>${esc(exName(c.field_1))}</td><td>${esc(c.field_3||'-')}</td><td>${esc(c.field_4||'-')}</td><td>${esc(c.field_5||'-')}</td><td>${esc(exName(c.field_7))}</td><td>${esc(c.field_6||'-')}</td><td>${c.Godkendtafvist?'<span class="badge badge-green">&#10003;</span>':'<span class="badge badge-gray">-</span>'}</td></tr>`).join('')}</tbody></table>`;}
+function fltCe(){const q=(document.getElementById('ceSearch').value||'').toLowerCase(),cl=document.getElementById('fCeClient').value;document.getElementById('ceTbl').innerHTML=ceTbl(D.certs.filter(c=>{if(q&&!JSON.stringify(c).toLowerCase().includes(q))return false;if(cl&&exName(c.field_1)!==cl)return false;return true;}));}
 
 // === TASKS ===
 function rTasks(){
@@ -353,7 +356,7 @@ function rTasks(){
     return `<div class="page-header"><div><h1>${t('tasks')}</h1><p>${tasks.length} service tasks</p></div><button class="btn" onclick="exportCSV(tasks,'tasks.csv')">&#8681; ${t('exportExcel')}</button></div>
     <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="tSearch" onkeyup="fltT()"><select id="fTSvc" onchange="fltT()"><option value="">${t('allTypes')}</option>${svcs.map(s=>`<option>${esc(s)}</option>`).join('')}</select></div><div id="tTbl">${tTbl(tasks)}</div></div>`;
 }
-function tTbl(data){if(!data.length)return`<div class="empty-state">${t('noData')}</div>`;return`<table class="data-table"><thead><tr><th>${t('date')}</th><th>${t('unitId')}</th><th>${t('service')}</th><th>${t('customer')}</th><th>${t('who')}</th><th>${t('comment')}</th><th>${t('status')}</th></tr></thead><tbody>${data.slice().reverse().map(e=>`<tr onclick="nav('detail','${esc(e.Unit_x0020_id||e.Unit_x0020_id1||'')}')"><td>${fmtDate(e.Dato)}</td><td class="container-number">${esc(e.Unit_x0020_id||e.Unit_x0020_id1||'-')}</td><td><span class="badge badge-${svcColor(e.Service)}">${esc(e.Service)}</span></td><td>${esc(e.Kunde||'-')}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(e.Kommentar||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table>`;}
+function tTbl(data){if(!data.length)return`<div class="empty-state">${t('noData')}</div>`;return`<table class="data-table"><thead><tr><th>${t('date')}</th><th>${t('unitId')}</th><th>${t('service')}</th><th>${t('customer')}</th><th>${t('who')}</th><th>${t('comment')}</th><th>${t('status')}</th></tr></thead><tbody>${data.slice().reverse().map(e=>`<tr onclick="nav('detail','${esc(e.Unitid||e.Unitid0||'')}')"><td>${fmtDate(e.Dato)}</td><td class="container-number">${esc(e.Unitid||e.Unitid0||'-')}</td><td><span class="badge badge-${svcColor(e.Service)}">${esc(e.Service)}</span></td><td>${esc(e.Kunde||'-')}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(e.Kommentar||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table>`;}
 function fltT(){const q=(document.getElementById('tSearch').value||'').toLowerCase(),svc=document.getElementById('fTSvc').value;document.getElementById('tTbl').innerHTML=tTbl(D.truck.filter(e=>{if(!e.Service)return false;if(q&&!JSON.stringify(e).toLowerCase().includes(q))return false;if(svc&&e.Service!==svc)return false;return true;}));}
 
 // === TIMELINE ===
@@ -361,7 +364,7 @@ function rTimeline(){
     const all=[...D.truck.map(e=>({t:'truck',d:e.Dato,data:e})),...D.certs.map(c=>({t:'cert',d:c.Created||c.Dato,data:c}))].sort((a,b)=>new Date(b.d||0)-new Date(a.d||0)).slice(0,50);
     const grp={};all.forEach(i=>{const k=fmtDate(i.d);if(!grp[k])grp[k]=[];grp[k].push(i);});
     return `<div class="page-header"><div><h1>${t('timeline')}</h1><p>Event history across all containers</p></div></div><div class="card">
-    ${Object.entries(grp).map(([d,items])=>`<div class="timeline-date">&#128197; ${d}</div>${items.map(i=>{if(i.t==='truck'){const e=i.data;return`<div class="timeline-entry"><div class="timeline-dot ${e.Ind_x002f_ud==1?'green':'amber'}"></div><div class="timeline-content"><h4>${e.Ind_x002f_ud==1?'Container In':'Container Out'} &mdash; ${esc(e.Unit_x0020_id||e.Unit_x0020_id1||'-')}</h4><p>${esc(exName(e.Hvem))} ${e.Service?'&middot; '+esc(e.Service):''} ${e.Kunde?'&middot; '+esc(e.Kunde):''}</p>${e.Kommentar?`<p style="font-style:italic;margin-top:4px;">${esc(e.Kommentar)}</p>`:''}</div><span class="badge badge-${svcColor(e.Service)}" style="margin-left:auto;">${esc(e.Service||'Movement')}</span></div>`;}else{const c=i.data;return`<div class="timeline-entry"><div class="timeline-dot blue"></div><div class="timeline-content"><h4>Certificate: ${esc(c.Title||'-')}</h4><p>${esc(c.Unit_x0020_id||c.Unit_x0020_id1||'-')} &middot; ${esc(exName(c.Client))} &middot; ${esc(exName(c.Hvem))}</p></div><span class="badge badge-blue" style="margin-left:auto;">Certificate</span></div>`;}}).join('')}`).join('')}</div>`;
+    ${Object.entries(grp).map(([d,items])=>`<div class="timeline-date">&#128197; ${d}</div>${items.map(i=>{if(i.t==='truck'){const e=i.data;return`<div class="timeline-entry"><div class="timeline-dot ${isIn(e.Ind_x002f_ud)?'green':'amber'}"></div><div class="timeline-content"><h4>${isIn(e.Ind_x002f_ud)?'Container In':'Container Out'} &mdash; ${esc(e.Unitid||e.Unitid0||'-')}</h4><p>${esc(exName(e.Hvem))} ${e.Service?'&middot; '+esc(e.Service):''} ${e.Kunde?'&middot; '+esc(e.Kunde):''}</p>${e.Kommentar?`<p style="font-style:italic;margin-top:4px;">${esc(e.Kommentar)}</p>`:''}</div><span class="badge badge-${svcColor(e.Service)}" style="margin-left:auto;">${esc(e.Service||'Movement')}</span></div>`;}else{const c=i.data;return`<div class="timeline-entry"><div class="timeline-dot blue"></div><div class="timeline-content"><h4>Certificate: ${esc(c.Title||'-')}</h4><p>${esc(c.field_3||'-')} &middot; ${esc(exName(c.field_1))} &middot; ${esc(exName(c.field_7))}</p></div><span class="badge badge-blue" style="margin-left:auto;">Certificate</span></div>`;}}).join('')}`).join('')}</div>`;
 }
 
 // === ADMIN ===
@@ -396,7 +399,7 @@ function rNewEntry(){
 }
 async function submitEntry(){
     const uid=document.getElementById('nUid').value;if(!uid){toast('Unit ID required','error');return;}
-    try{toast('Creating...','info');await addItem('Truckliste',{Unit_x0020_id:uid,Unit_x0020_id1:document.getElementById('nUid1').value,Ind_x002f_ud:document.getElementById('nIO').value,Kunde:document.getElementById('nKunde').value,Service:document.getElementById('nSvc').value,Status:document.getElementById('nStat').value,Kommentar:document.getElementById('nCom').value,Bogholderi_x0020_kommentar:document.getElementById('nBook').value});toast('Entry created!','success');await loadData();nav('containers');}catch(e){toast('Error: '+e.message,'error');}
+    try{toast('Creating...','info');await addItem('Truckliste',{Unitid:uid,Unitid0:document.getElementById('nUid1').value,Ind_x002f_ud:document.getElementById('nIO').value,Kunde:document.getElementById('nKunde').value,Service:document.getElementById('nSvc').value,Status:document.getElementById('nStat').value,Kommentar:document.getElementById('nCom').value,Bogholderikommentar:document.getElementById('nBook').value});toast('Entry created!','success');await loadData();nav('containers');}catch(e){toast('Error: '+e.message,'error');}
 }
 function rNewCert(){
     return `<button class="btn" onclick="nav('certificates')" style="margin-bottom:16px;">&#8592; ${t('back')}</button>
@@ -409,7 +412,7 @@ function rNewCert(){
 }
 async function submitCert(){
     const title=document.getElementById('cTitle').value;if(!title){toast('Certificate number required','error');return;}
-    try{toast('Creating...','info');await addItem('Certifikatnumre',{Title:title,Certnr:document.getElementById('cNr').value,Unit_x0020_id:document.getElementById('cUid').value,Unit_x0020_id1:document.getElementById('cUid1').value,CSC:document.getElementById('cCSC').value,Inspektionstype:document.getElementById('cInsp').value,Kommentar:document.getElementById('cCom').value});toast('Certificate created!','success');await loadData();nav('certificates');}catch(e){toast('Error: '+e.message,'error');}
+    try{toast('Creating...','info');await addItem('Certifikatnumre',{Title:title,field_3:document.getElementById('cUid').value,field_4:document.getElementById('cCSC').value,field_5:document.getElementById('cInsp').value});toast('Certificate created!','success');await loadData();nav('certificates');}catch(e){toast('Error: '+e.message,'error');}
 }
 
 // === INIT ===
