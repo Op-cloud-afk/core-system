@@ -440,7 +440,7 @@ function render() {
     if(!dataLoaded){el.innerHTML=`<div class="loading"><div class="spinner"></div>${t('loading')}</div>`;return;}
     // Save search values before re-render
     ['cSearch','ceSearch','tSearch','lgSearch','tlSearch','globalSearch'].forEach(id=>{const inp=document.getElementById(id);if(inp)searchState[id]=inp.value;});
-    el.innerHTML='<div class="main-inner">'+({dashboard:rDash,containers:rContainers,'container-detail':rContainerDetail,certificates:rCerts,tasks:rTasks,loosegear:rLoosegear,timeline:rTimeline,admin:rAdmin,'new-entry':rNewEntry,'new-cert':rNewCert,'new-task':rNewTask,'new-loosegear':rNewLoosegear}[page]||rDash)()+'</div>';
+    el.innerHTML='<div class="main-inner">'+({dashboard:rDash,containers:rContainers,'container-detail':rContainerDetail,certificates:rCerts,'cert-detail':rCertDetail,tasks:rTasks,'task-detail':rTaskDetail,loosegear:rLoosegear,'lg-detail':rLgDetail,timeline:rTimeline,'tl-detail':rTlDetail,admin:rAdmin,'new-entry':rNewEntry,'new-cert':rNewCert,'new-task':rNewTask,'new-loosegear':rNewLoosegear}[page]||rDash)()+'</div>';
     // Restore search values and focus after re-render
     ['cSearch','ceSearch','tSearch','lgSearch','tlSearch','globalSearch'].forEach(id=>{const inp=document.getElementById(id);if(inp&&searchState[id]){inp.value=searchState[id];inp.setSelectionRange(inp.value.length,inp.value.length);}});
 }
@@ -871,7 +871,7 @@ function ceTbl(data) {
 
     if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
     return `<div class="table-wrap"><table class="data-table"><thead><tr>${thSort('certificates','Certifikat nr.','Cert No.')}${thSort('certificates','Kunde','Customer')}${thSort('certificates','Type','Type')}${thSort('certificates','Måned','Month')}${thSort('certificates','UNIT','Unit')}${thSort('certificates','Sling nr.','Sling No.')}${thSort('certificates','Ordre.nr','Order No.')}${thSort('certificates','Hvem','Who')}</tr></thead><tbody>
-    ${filtered.map(c=>`<tr><td class="container-number">${esc(c['Certifikat nr.']||'-')}</td><td>${esc(c['Kunde']||'-')}</td><td>${esc(c['Type']||'-')}</td><td>${esc(c['Måned']||'-')}</td><td>${esc(c['UNIT']||'-')}</td><td>${esc(c['Sling nr.']||'-')}</td><td>${esc(c['Ordre.nr']||'-')}</td><td>${esc(c['Hvem']||'-')}</td></tr>`).join('')}</tbody></table></div>`;
+    ${filtered.map(c=>`<tr class="clickable-row" onclick="openCert('${esc(c['Certifikat nr.'])}')"><td class="container-number">${esc(c['Certifikat nr.']||'-')}</td><td>${esc(c['Kunde']||'-')}</td><td>${esc(c['Type']||'-')}</td><td>${esc(c['Måned']||'-')}</td><td>${esc(c['UNIT']||'-')}</td><td>${esc(c['Sling nr.']||'-')}</td><td>${esc(c['Ordre.nr']||'-')}</td><td>${esc(c['Hvem']||'-')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 // === TASKS ===
@@ -887,7 +887,7 @@ function tTbl(data) {
 
     if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
     return `<div class="table-wrap"><table class="data-table"><thead><tr>${thSort('tasks','Job nr','Job No.')}${thSort('tasks','job modtaget','Received')}${thSort('tasks','Beskrivelse','Description')}${thSort('tasks','Kunde','Customer')}</tr></thead><tbody>
-    ${filtered.map(t=>`<tr><td class="container-number">${esc(t['Job nr']||'-')}</td><td>${fmtDate(t['job modtaget'])}</td><td>${esc(t['Beskrivelse']||'-')}</td><td>${esc(t['Kunde']||'-')}</td></tr>`).join('')}</tbody></table></div>`;
+    ${filtered.map(t=>`<tr class="clickable-row" onclick="openTask('${esc(t['Job nr'])}')"><td class="container-number">${esc(t['Job nr']||'-')}</td><td>${fmtDate(t['job modtaget'])}</td><td>${esc(t['Beskrivelse']||'-')}</td><td>${esc(t['Kunde']||'-')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 // === LOOSEGEAR ===
@@ -903,7 +903,7 @@ function lgTbl(data) {
 
     if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
     return `<div class="table-wrap"><table class="data-table"><thead><tr>${thSort('loosegear','Certifikat Nr','Cert No.')}${thSort('loosegear','Kunde','Customer')}${thSort('loosegear','Inspektions dato','Inspection Date')}${thSort('loosegear','Beskrivelse','Description')}${thSort('loosegear','Hvem','Who')}</tr></thead><tbody>
-    ${filtered.map(l=>`<tr><td class="container-number">${esc(l['Certifikat Nr']||'-')}</td><td>${esc(l['Kunde']||'-')}</td><td>${fmtDate(l['Inspektions dato'])}</td><td>${esc(l['Beskrivelse']||'-')}</td><td>${esc(l['Hvem']||'-')}</td></tr>`).join('')}</tbody></table></div>`;
+    ${filtered.map(l=>`<tr class="clickable-row" onclick="openLoosegear('${esc(l['Certifikat Nr'])}')"><td class="container-number">${esc(l['Certifikat Nr']||'-')}</td><td>${esc(l['Kunde']||'-')}</td><td>${fmtDate(l['Inspektions dato'])}</td><td>${esc(l['Beskrivelse']||'-')}</td><td>${esc(l['Hvem']||'-')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 // === TIMELINE ===
@@ -919,7 +919,185 @@ function tlTbl(data) {
 
     if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
     return `<div class="table-wrap"><table class="data-table"><thead><tr>${thSort('timeline','Dato',t('date'))}${thSort('timeline','Ind_x002f_ud',t('inOut'))}${thSort('timeline','Unitid',t('unitId'))}${thSort('timeline','Vognmand',t('carrier'))}${thSort('timeline','Kunde',t('customer'))}${thSort('timeline','Service',t('service'))}${thSort('timeline','Hvem',t('who'))}${thSort('timeline','Bogholderikommentar',t('bookkeeping'))}${thSort('timeline','Status',t('status'))}</tr></thead><tbody>
-    ${filtered.map(e=>`<tr><td>${fmtDate(e.Dato)}</td><td>${isIn(e.Ind_x002f_ud)?'<span class="badge badge-green">IN</span>':isOut(e.Ind_x002f_ud)?'<span class="badge badge-amber">OUT</span>':'<span class="badge badge-gray">'+esc(String(e.Ind_x002f_ud||'-'))+'</span>'}</td><td class="container-number">${esc(e.Unitid||'-')}</td><td>${esc(exName(e.Vognmand))}</td><td>${esc(e.Kunde||'-')}</td><td>${svcVal(e.Service)?`<span class="badge badge-${svcColor(e.Service)}">${esc(svcVal(e.Service))}</span>`:'-'}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(e.Bogholderikommentar||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table></div>`;
+    ${filtered.map(e=>`<tr class="clickable-row" onclick="openTimeline('${esc(e.id)}')"><td>${fmtDate(e.Dato)}</td><td>${isIn(e.Ind_x002f_ud)?'<span class="badge badge-green">IN</span>':isOut(e.Ind_x002f_ud)?'<span class="badge badge-amber">OUT</span>':'<span class="badge badge-gray">'+esc(String(e.Ind_x002f_ud||'-'))+'</span>'}</td><td class="container-number">${esc(e.Unitid||'-')}</td><td>${esc(exName(e.Vognmand))}</td><td>${esc(e.Kunde||'-')}</td><td>${svcVal(e.Service)?`<span class="badge badge-${svcColor(e.Service)}">${esc(svcVal(e.Service))}</span>`:'-'}</td><td>${esc(exName(e.Hvem))}</td><td>${esc(e.Bogholderikommentar||'-')}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table></div>`;
+}
+
+// === CERTIFICATE DETAIL ===
+let selectedCert = null;
+function openCert(certNr) {
+    selectedCert = D.certificates.find(c => String(c['Certifikat nr.']) === String(certNr));
+    if (!selectedCert) { toast('Certificate not found','error'); return; }
+    page = 'cert-detail'; render(); window.scrollTo(0,0);
+}
+function rCertDetail() {
+    if (!selectedCert) return '<div class="empty-state">No certificate selected</div>';
+    const c = selectedCert;
+    const fields = [
+        {label: 'Certificate No.', val: c['Certifikat nr.']},
+        {label: 'Customer', val: c['Kunde']},
+        {label: 'Type', val: c['Type']},
+        {label: 'Month', val: c['Måned']},
+        {label: 'Unit', val: c['UNIT']},
+        {label: 'Sling No.', val: c['Sling nr.']},
+        {label: 'Last 4 Years', val: c['Sidste 4 års ']},
+        {label: 'Order No.', val: c['Ordre.nr. ']},
+        {label: 'Who', val: c['Hvem']},
+    ];
+    // Find related containers by UNIT
+    const unit = String(c['UNIT']||'').toUpperCase().replace(/[-\s]/g,'');
+    const relContainers = unit ? D.containers.filter(ct => {
+        const cid = ((ct['Præfix']||'') + (ct['958112-5']||'')).toUpperCase().replace(/[-\s]/g,'');
+        return cid && (cid.includes(unit) || unit.includes(cid));
+    }) : [];
+
+    return `<div class="detail-back" onclick="nav('certificates')">&#8592; Back to Certificates</div>
+    <div class="detail-header">
+        <div class="detail-icon" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);">&#9873;</div>
+        <div><h1>Certificate ${esc(c['Certifikat nr.']||'')}</h1>
+        <div class="detail-sub">${esc(c['Type']||'')} &middot; ${esc(c['Kunde']||'')} &middot; ${esc(c['Måned']||'')}</div></div>
+    </div>
+    <div class="card" style="margin-bottom:24px">
+        <div class="card-header"><h3>Certificate Details</h3></div>
+        <div class="detail-grid">
+            ${fields.map(f => { const v=f.val; const empty=!v||v==='-'; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
+        </div>
+    </div>
+    ${relContainers.length ? `<div class="card"><div class="card-header"><h3>Related Containers</h3></div>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>No.</th><th>Type</th><th>ID</th><th>Company</th><th>Lessee</th></tr></thead><tbody>
+    ${relContainers.map(e=>`<tr class="clickable-row" onclick="openContainer(0,'${esc(e['løbenr.'])}')"><td>${esc(e['løbenr.']||'-')}</td><td>${esc(e['Effekt']||'-')}</td><td class="container-number">${esc((e['Præfix']||'')+' '+(e['958112-5']||''))}</td><td>${esc(e['Firma']||'-')}</td><td>${esc(e['Lejer']||'-')}</td></tr>`).join('')}</tbody></table></div></div>` : ''}`;
+}
+
+// === TASK DETAIL ===
+let selectedTask = null;
+function openTask(jobNr) {
+    selectedTask = D.tasks.find(t => String(t['Job nr']) === String(jobNr));
+    if (!selectedTask) { toast('Task not found','error'); return; }
+    page = 'task-detail'; render(); window.scrollTo(0,0);
+}
+function rTaskDetail() {
+    if (!selectedTask) return '<div class="empty-state">No task selected</div>';
+    const tk = selectedTask;
+    const allKeys = Object.keys(tk);
+    const fields = allKeys.filter(k => k).map(k => {
+        const val = tk[k];
+        const isDateKey = k.toLowerCase().includes('dato') || k.toLowerCase().includes('date') || k.toLowerCase().includes('modtaget');
+        return {label: k, val: isDateKey ? fmtDate(val) : val};
+    });
+    return `<div class="detail-back" onclick="nav('tasks')">&#8592; Back to Tasks</div>
+    <div class="detail-header">
+        <div class="detail-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706);">&#9888;</div>
+        <div><h1>Task ${esc(tk['Job nr']||'')}</h1>
+        <div class="detail-sub">${esc(tk['Beskrivelse']||'')} &middot; ${esc(tk['Kunde']||'')}</div></div>
+    </div>
+    <div class="card">
+        <div class="card-header"><h3>Task Details</h3></div>
+        <div class="detail-grid">
+            ${fields.map(f => { const v=f.val; const empty=!v||v==='-'||v===0; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
+        </div>
+    </div>`;
+}
+
+// === LOOSEGEAR DETAIL ===
+let selectedLoosegear = null;
+function openLoosegear(certNr) {
+    selectedLoosegear = D.loosegear.find(l => String(l['Certifikat Nr']) === String(certNr));
+    if (!selectedLoosegear) { toast('Loosegear item not found','error'); return; }
+    page = 'lg-detail'; render(); window.scrollTo(0,0);
+}
+function rLgDetail() {
+    if (!selectedLoosegear) return '<div class="empty-state">No item selected</div>';
+    const l = selectedLoosegear;
+    const fields = [
+        {label: 'Certificate No.', val: l['Certifikat Nr']},
+        {label: 'Customer', val: l['Kunde']},
+        {label: 'Inspection Date', val: fmtDate(l['Inspektions dato'])},
+        {label: 'Description', val: l['Beskrivelse']},
+        {label: 'Who', val: l['Hvem']},
+    ];
+    // Also include any extra keys not already listed
+    const shown = new Set(['Certifikat Nr','Kunde','Inspektions dato','Beskrivelse','Hvem']);
+    Object.keys(l).forEach(k => { if(k && !shown.has(k)) fields.push({label: k, val: l[k]}); });
+
+    return `<div class="detail-back" onclick="nav('loosegear')">&#8592; Back to Loosegear</div>
+    <div class="detail-header">
+        <div class="detail-icon" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);">&#128631;</div>
+        <div><h1>Loosegear ${esc(l['Certifikat Nr']||'')}</h1>
+        <div class="detail-sub">${esc(l['Beskrivelse']||'')} &middot; ${esc(l['Kunde']||'')}</div></div>
+    </div>
+    <div class="card">
+        <div class="card-header"><h3>Loosegear Details</h3></div>
+        <div class="detail-grid">
+            ${fields.map(f => { const v=f.val; const empty=!v||v==='-'||v===0; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
+        </div>
+    </div>`;
+}
+
+// === TIMELINE DETAIL ===
+let selectedTimeline = null;
+function openTimeline(id) {
+    selectedTimeline = D.timeline.find(t => String(t.id) === String(id));
+    if (!selectedTimeline) { toast('Entry not found','error'); return; }
+    page = 'tl-detail'; render(); window.scrollTo(0,0);
+    loadTimelineImage();
+}
+function rTlDetail() {
+    if (!selectedTimeline) return '<div class="empty-state">No entry selected</div>';
+    const e = selectedTimeline;
+    const fields = [
+        {label: 'Date', val: fmtDate(e.Dato)},
+        {label: 'In/Out', val: e.Ind_x002f_ud},
+        {label: 'Unit ID', val: e.Unitid},
+        {label: 'Carrier', val: exName(e.Vognmand)},
+        {label: 'Customer', val: e.Kunde},
+        {label: 'Service', val: svcVal(e.Service)},
+        {label: 'Who', val: exName(e.Hvem)},
+        {label: 'Bookkeeping', val: e.Bogholderikommentar},
+        {label: 'Status', val: e.Status},
+        {label: 'Created', val: fmtDate(e.Created)},
+        {label: 'Modified', val: fmtDate(e.Modified)},
+    ];
+    const hasPic = e.Billede && e.Billede !== '';
+    return `<div class="detail-back" onclick="nav('timeline')">&#8592; Back to Timeline</div>
+    <div class="detail-header">
+        <div class="detail-icon" style="background:linear-gradient(135deg,#22c55e,#16a34a);">&#128337;</div>
+        <div><h1>${esc(e.Unitid||'Movement')} &mdash; ${fmtDate(e.Dato)}</h1>
+        <div class="detail-sub">${isIn(e.Ind_x002f_ud)?'IN':isOut(e.Ind_x002f_ud)?'OUT':esc(String(e.Ind_x002f_ud||''))} &middot; ${esc(e.Kunde||'')} &middot; ${esc(svcVal(e.Service)||'')}</div></div>
+    </div>
+    <div class="card" style="margin-bottom:24px">
+        <div class="card-header"><h3>Movement Details</h3></div>
+        <div class="detail-grid">
+            ${fields.map(f => { const v=f.val; const empty=!v||v==='-'; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header"><h3>Photo</h3></div>
+        <div id="tlDetailImg" class="detail-images">
+            ${hasPic ? '<div class="img-loading"><div class="spinner"></div>Loading image...</div>' : '<div class="empty-state">No photo for this entry</div>'}
+        </div>
+    </div>`;
+}
+async function loadTimelineImage() {
+    if (!selectedTimeline || !selectedTimeline.Billede) return;
+    const e = selectedTimeline;
+    const imgDiv = document.getElementById('tlDetailImg');
+    if (!imgDiv) return;
+    try {
+        const s = await getSite();
+        const url = `https://graph.microsoft.com/v1.0/sites/${s}/lists/Truckliste/items/${e.id}?$expand=fields($select=Billede)`;
+        const data = await gGet(url);
+        const billedeField = data.fields?.Billede;
+        if (billedeField) {
+            let imgInfo;
+            try { imgInfo = typeof billedeField === 'string' ? JSON.parse(billedeField) : billedeField; } catch(ex) { imgInfo = billedeField; }
+            const serverUrl = imgInfo.serverUrl || ('https://' + SP_HOST);
+            const serverRelUrl = imgInfo.serverRelativeUrl || '';
+            if (serverRelUrl) {
+                imgDiv.innerHTML = `<div class="detail-img-card"><img src="${serverUrl + serverRelUrl}" onerror="this.parentElement.innerHTML='<div class=img-loading>Could not load image</div>'"><div class="img-info">${fmtDate(e.Dato)} &middot; ${esc(exName(e.Hvem)||'')}</div></div>`;
+                return;
+            }
+        }
+        imgDiv.innerHTML = '<div class="empty-state">Could not load image</div>';
+    } catch(err) { console.warn('Timeline image error:', err); imgDiv.innerHTML = '<div class="empty-state">Could not load image</div>'; }
 }
 
 // === ADMIN ===
