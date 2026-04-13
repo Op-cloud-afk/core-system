@@ -146,6 +146,25 @@
         .col-filter-dropdown .cfd-apply button { padding: 5px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: var(--accent-blue); color: white; }
         .col-filter-dropdown .cfd-apply button:hover { background: #2563eb; }
         .data-table th { position: relative; }
+        .data-table tr.clickable-row { cursor: pointer; }
+        .data-table tr.clickable-row:hover { background: #e8f0fe; }
+        /* Container detail view */
+        .detail-back { display: inline-flex; align-items: center; gap: 6px; color: var(--accent-blue); font-size: 14px; font-weight: 500; cursor: pointer; margin-bottom: 20px; }
+        .detail-back:hover { text-decoration: underline; }
+        .detail-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+        .detail-header .detail-icon { width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+        .detail-header h1 { font-size: 24px; font-weight: 700; }
+        .detail-header .detail-sub { color: var(--text-secondary); font-size: 14px; margin-top: 2px; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .detail-field { padding: 14px 18px; background: var(--bg); border-radius: 10px; border: 1px solid var(--border); }
+        .detail-field .df-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 4px; }
+        .detail-field .df-value { font-size: 15px; font-weight: 500; color: var(--text); word-break: break-word; }
+        .detail-field .df-value.empty { color: var(--text-secondary); font-style: italic; }
+        .detail-images { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+        .detail-img-card { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: white; }
+        .detail-img-card img { width: 100%; height: 200px; object-fit: cover; display: block; }
+        .detail-img-card .img-info { padding: 10px 14px; font-size: 12px; color: var(--text-secondary); }
+        .detail-img-card .img-loading { width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; background: var(--bg); color: var(--text-secondary); font-size: 13px; }
         /* Customer dropdown with add-new */
         .cust-select-wrap { position: relative; }
         .cust-select-wrap select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; color: var(--text); background: white; appearance: auto; }
@@ -421,7 +440,7 @@ function render() {
     if(!dataLoaded){el.innerHTML=`<div class="loading"><div class="spinner"></div>${t('loading')}</div>`;return;}
     // Save search values before re-render
     ['cSearch','ceSearch','tSearch','lgSearch','tlSearch','globalSearch'].forEach(id=>{const inp=document.getElementById(id);if(inp)searchState[id]=inp.value;});
-    el.innerHTML='<div class="main-inner">'+({dashboard:rDash,containers:rContainers,certificates:rCerts,tasks:rTasks,loosegear:rLoosegear,timeline:rTimeline,admin:rAdmin,'new-entry':rNewEntry,'new-cert':rNewCert,'new-task':rNewTask,'new-loosegear':rNewLoosegear}[page]||rDash)()+'</div>';
+    el.innerHTML='<div class="main-inner">'+({dashboard:rDash,containers:rContainers,'container-detail':rContainerDetail,certificates:rCerts,tasks:rTasks,loosegear:rLoosegear,timeline:rTimeline,admin:rAdmin,'new-entry':rNewEntry,'new-cert':rNewCert,'new-task':rNewTask,'new-loosegear':rNewLoosegear}[page]||rDash)()+'</div>';
     // Restore search values and focus after re-render
     ['cSearch','ceSearch','tSearch','lgSearch','tlSearch','globalSearch'].forEach(id=>{const inp=document.getElementById(id);if(inp&&searchState[id]){inp.value=searchState[id];inp.setSelectionRange(inp.value.length,inp.value.length);}});
 }
@@ -713,7 +732,130 @@ function cTbl(data) {
 
     if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
     return `<div class="table-wrap"><table class="data-table"><thead><tr>${thSort('containers','løbenr.','No.')}${thSort('containers','Ejerskab','Ownership')}${thSort('containers','Købsdato','Purchase Date')}${thSort('containers','Effekt','Type')}${thSort('containers','Præfix','ID')}${thSort('containers','Firma','Company')}${thSort('containers','Købspris','Purchase Price')}${thSort('containers','Lejer','Lessee')}${thSort('containers','Udlej.dato','Rental Date')}</tr></thead><tbody>
-    ${filtered.map(e=>`<tr><td>${esc(e['løbenr.']||'-')}</td><td>${esc(e['Ejerskab']||'-')}</td><td>${fmtDate(e['Købsdato'])}</td><td>${esc(e['Effekt']||'-')}</td><td class="container-number">${esc((e['Præfix']||'') + ' ' + (e['958112-5']||''))}</td><td>${esc(e['Firma']||'-')}</td><td>${esc(e['Købspris']||'-')}</td><td>${esc(e['Lejer']||'-')}</td><td>${fmtDate(e['Udlej.dato'])}</td></tr>`).join('')}</tbody></table></div>`;
+    ${filtered.map((e,i)=>`<tr class="clickable-row" onclick="openContainer(${filtered.indexOf(e)}, '${esc(e['løbenr.'])}')"><td>${esc(e['løbenr.']||'-')}</td><td>${esc(e['Ejerskab']||'-')}</td><td>${fmtDate(e['Købsdato'])}</td><td>${esc(e['Effekt']||'-')}</td><td class="container-number">${esc((e['Præfix']||'') + ' ' + (e['958112-5']||''))}</td><td>${esc(e['Firma']||'-')}</td><td>${esc(e['Købspris']||'-')}</td><td>${esc(e['Lejer']||'-')}</td><td>${fmtDate(e['Udlej.dato'])}</td></tr>`).join('')}</tbody></table></div>`;
+}
+
+// === CONTAINER DETAIL ===
+let selectedContainer = null;
+
+function openContainer(idx, lobenr) {
+    selectedContainer = D.containers.find(c => String(c['løbenr.']) === String(lobenr)) || D.containers[idx];
+    if (!selectedContainer) { toast('Container not found','error'); return; }
+    page = 'container-detail';
+    render();
+    window.scrollTo(0,0);
+    // Load images async
+    loadContainerImages();
+}
+
+function rContainerDetail() {
+    if (!selectedContainer) return '<div class="empty-state">No container selected</div>';
+    const c = selectedContainer;
+    const unitId = (c['Præfix']||'') + ' ' + (c['958112-5']||'');
+
+    const fields = [
+        {label: 'No. (løbenr.)', val: c['løbenr.']},
+        {label: 'Ownership', val: c['Ejerskab']},
+        {label: 'Purchase Date', val: fmtDate(c['Købsdato'])},
+        {label: 'Type', val: c['Effekt']},
+        {label: 'Prefix', val: c['Præfix']},
+        {label: 'Serial (958112-5)', val: c['958112-5']},
+        {label: 'Company', val: c['Firma']},
+        {label: 'Purchase Invoice', val: c['Købsfaktura - bilagnr']},
+        {label: 'Purchase Price', val: c['Købspris']},
+        {label: 'Transport/Purchase', val: c['Transport/køb']},
+        {label: 'Sale Date', val: fmtDate(c['Salgsdato'])},
+        {label: 'Sale Price', val: c['Salgspris']},
+        {label: 'Invoice No.', val: c['Fakturanr']},
+        {label: 'Rental Date', val: fmtDate(c['Udlej.dato'])},
+        {label: 'Return NJ', val: c['Retur NJ']},
+        {label: 'Lessee', val: c['Lejer']},
+        {label: 'Buyer', val: c['Køber']},
+        {label: 'Sling No.', val: c['Slingnr.']},
+        {label: 'Check 01.12.2025', val: c['Tjek 01.12.2025']},
+    ];
+
+    // Find related timeline entries for this container
+    const prefix = (c['Præfix']||'').toUpperCase();
+    const serial = (c['958112-5']||'').replace(/[-\s]/g,'');
+    const related = D.timeline.filter(t => {
+        if (!t.Unitid) return false;
+        const uid = String(t.Unitid).toUpperCase().replace(/[-\s]/g,'');
+        return uid.includes(prefix + serial) || uid === prefix + serial;
+    });
+
+    return `<div class="detail-back" onclick="nav('containers')">&#8592; Back to Containers</div>
+    <div class="detail-header">
+        <div class="detail-icon">&#9744;</div>
+        <div>
+            <h1>${esc(unitId)}</h1>
+            <div class="detail-sub">Container #${esc(c['løbenr.']||'')} &middot; ${esc(c['Effekt']||'Unknown type')} &middot; ${esc(c['Firma']||'')}</div>
+        </div>
+    </div>
+    <div class="card" style="margin-bottom:24px">
+        <div class="card-header"><h3>Container Details</h3></div>
+        <div class="detail-grid">
+            ${fields.map(f => {
+                const v = f.val;
+                const empty = !v || v === '-' || v === '0' || v === 0;
+                return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty ? 'N/A' : esc(String(v))}</div></div>`;
+            }).join('')}
+        </div>
+    </div>
+    <div class="card" style="margin-bottom:24px">
+        <div class="card-header"><h3>Photos</h3></div>
+        <div id="containerImages" class="detail-images">
+            ${related.some(r => r.Billede) ? '<div class="img-loading"><div class="spinner"></div>Loading images...</div>' : '<div class="empty-state">No photos available for this container</div>'}
+        </div>
+    </div>
+    ${related.length ? `<div class="card">
+        <div class="card-header"><h3>Movement History (${related.length})</h3></div>
+        <div class="table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>In/Out</th><th>Carrier</th><th>Customer</th><th>Service</th><th>Who</th><th>Status</th></tr></thead><tbody>
+        ${related.sort((a,b) => new Date(b.Dato||0) - new Date(a.Dato||0)).map(e => `<tr><td>${fmtDate(e.Dato)}</td><td>${isIn(e.Ind_x002f_ud)?'<span class="badge badge-green">IN</span>':isOut(e.Ind_x002f_ud)?'<span class="badge badge-amber">OUT</span>':'<span class="badge badge-gray">${esc(String(e.Ind_x002f_ud||'-'))}</span>'}</td><td>${esc(exName(e.Vognmand))}</td><td>${esc(e.Kunde||'-')}</td><td>${svcVal(e.Service)?'<span class="badge badge-'+svcColor(e.Service)+'">'+esc(svcVal(e.Service))+'</span>':'-'}</td><td>${esc(exName(e.Hvem))}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table></div>
+    </div>` : ''}`;
+}
+
+async function loadContainerImages() {
+    if (!selectedContainer) return;
+    const c = selectedContainer;
+    const prefix = (c['Præfix']||'').toUpperCase();
+    const serial = (c['958112-5']||'').replace(/[-\s]/g,'');
+
+    const related = D.timeline.filter(t => {
+        if (!t.Unitid || !t.Billede) return false;
+        const uid = String(t.Unitid).toUpperCase().replace(/[-\s]/g,'');
+        return uid.includes(prefix + serial) || uid === prefix + serial;
+    });
+
+    if (!related.length) return;
+
+    const imgDiv = document.getElementById('containerImages');
+    if (!imgDiv) return;
+
+    const cards = [];
+    for (const entry of related) {
+        try {
+            const s = await getSite();
+            const url = `https://graph.microsoft.com/v1.0/sites/${s}/lists/Truckliste/items/${entry.id}?$expand=fields($select=Billede)`;
+            const data = await gGet(url);
+            const billedeField = data.fields?.Billede;
+
+            if (billedeField) {
+                let imgInfo;
+                try { imgInfo = typeof billedeField === 'string' ? JSON.parse(billedeField) : billedeField; } catch(e) { imgInfo = billedeField; }
+                const serverUrl = imgInfo.serverUrl || ('https://' + SP_HOST);
+                const serverRelUrl = imgInfo.serverRelativeUrl || '';
+
+                if (serverRelUrl) {
+                    const imgUrl = serverUrl + serverRelUrl;
+                    const tk = await getToken();
+                    cards.push(`<div class="detail-img-card"><img src="${imgUrl}" onerror="this.parentElement.innerHTML='<div class=img-loading>Could not load image</div>'"><div class="img-info">${fmtDate(entry.Dato)} &middot; ${esc(exName(entry.Hvem)||'')}</div></div>`);
+                }
+            }
+        } catch(e) { console.warn('Image load error for item '+entry.id+':', e); }
+    }
+
+    imgDiv.innerHTML = cards.length ? cards.join('') : '<div class="empty-state">No photos could be loaded</div>';
 }
 
 // === CERTIFICATES ===
