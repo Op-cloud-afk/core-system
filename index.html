@@ -32,7 +32,7 @@
         .login-status { margin-top: 16px; color: var(--text-secondary); font-size: 14px; }
         .app-layout { display: none; height: 100vh; }
         .app-layout.active { display: flex; }
-        .topbar { position: fixed; top: 0; left: var(--sidebar-width); right: 0; height: 64px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 16px; z-index: 100; }
+        .topbar { position: fixed; top: 0; left: var(--sidebar-width); right: 0; height: 64px; background: white; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 48px; gap: 16px; z-index: 100; }
         .topbar-search { flex: 1; max-width: 400px; position: relative; }
         .topbar-search input { width: 100%; padding: 10px 16px 10px 40px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: var(--bg); }
         .topbar-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); }
@@ -56,7 +56,8 @@
         .sidebar-footer { padding: 16px; border-top: 1px solid rgba(255,255,255,0.1); }
         .sidebar-footer button { width: 100%; padding: 10px; background: rgba(255,255,255,0.1); border: none; color: rgba(255,255,255,0.7); border-radius: 6px; cursor: pointer; font-size: 13px; }
         .sidebar-footer button:hover { background: rgba(255,255,255,0.15); color: white; }
-        .main-content { margin-left: var(--sidebar-width); margin-top: 64px; padding: 24px; min-height: calc(100vh - 64px); }
+        .main-content { margin-left: var(--sidebar-width); margin-top: 64px; padding: 24px 48px; min-height: calc(100vh - 64px); }
+        .main-inner { max-width: 1400px; margin: 0 auto; }
         .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
         .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
         .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
@@ -84,7 +85,7 @@
         .badge-purple { background: #ede9fe; color: #5b21b6; }
         .badge-gray { background: #f1f5f9; color: #475569; }
         .filters-bar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; align-items: center; }
-        .filters-bar input, .filters-bar select { padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: white; min-width: 160px; }
+        .filters-bar input, .filters-bar select { padding: 8px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; background: white; color: var(--text); min-width: 160px; }
         .filters-bar input { flex: 1; max-width: 300px; }
         .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
         .page-header h1 { font-size: 24px; font-weight: 700; }
@@ -106,7 +107,7 @@
         .form-group { margin-bottom: 20px; }
         .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
         .form-group label .req { color: var(--accent-red); }
-        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; color: var(--text); background: white; }
         .form-group textarea { min-height: 80px; resize: vertical; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .form-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
@@ -392,7 +393,7 @@ function render() {
     if(!dataLoaded){el.innerHTML=`<div class="loading"><div class="spinner"></div>${t('loading')}</div>`;return;}
     // Save search values before re-render
     ['cSearch','ceSearch','tSearch','lgSearch','tlSearch','globalSearch'].forEach(id=>{const inp=document.getElementById(id);if(inp)searchState[id]=inp.value;});
-    el.innerHTML=({dashboard:rDash,containers:rContainers,certificates:rCerts,tasks:rTasks,loosegear:rLoosegear,timeline:rTimeline,admin:rAdmin,'new-entry':rNewEntry,'new-cert':rNewCert,'new-task':rNewTask,'new-loosegear':rNewLoosegear}[page]||rDash)();
+    el.innerHTML='<div class="main-inner">'+({dashboard:rDash,containers:rContainers,certificates:rCerts,tasks:rTasks,loosegear:rLoosegear,timeline:rTimeline,admin:rAdmin,'new-entry':rNewEntry,'new-cert':rNewCert,'new-task':rNewTask,'new-loosegear':rNewLoosegear}[page]||rDash)()+'</div>';
     // Restore search values and focus after re-render
     ['cSearch','ceSearch','tSearch','lgSearch','tlSearch','globalSearch'].forEach(id=>{const inp=document.getElementById(id);if(inp&&searchState[id]){inp.value=searchState[id];inp.setSelectionRange(inp.value.length,inp.value.length);}});
 }
@@ -519,7 +520,7 @@ function rDash() {
 function rContainers() {
     const data = sortData(D.containers, 'containers');
     return `<div class="page-header"><div><h1>${t('containers')}</h1><p>${D.containers.length} entries</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.containers,'containerliste.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-entry')">+ New Container</button>`:''}</div></div>
-    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="cSearch" onkeyup="searchState.cSearch=this.value;render()"></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="cSearch" onkeyup="searchState.cSearch=this.value;document.getElementById('cTbl').innerHTML=cTbl(sortData(D.containers,'containers'))"></div>
     <div id="cTbl">${cTbl(data)}</div></div>`;
 }
 function cTbl(data) {
@@ -535,7 +536,7 @@ function cTbl(data) {
 function rCerts() {
     const data = sortData(D.certificates, 'certificates');
     return `<div class="page-header"><div><h1>${t('certificates')}</h1><p>${D.certificates.length} certificates</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.certificates,'certifikatnumre.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-cert')">+ New Certificate</button>`:''}</div></div>
-    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="ceSearch" onkeyup="searchState.ceSearch=this.value;render()"></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="ceSearch" onkeyup="searchState.ceSearch=this.value;document.getElementById('ceTbl').innerHTML=ceTbl(sortData(D.certificates,'certificates'))"></div>
     <div id="ceTbl">${ceTbl(data)}</div></div>`;
 }
 function ceTbl(data) {
@@ -551,7 +552,7 @@ function ceTbl(data) {
 function rTasks() {
     const data = sortData(D.tasks, 'tasks');
     return `<div class="page-header"><div><h1>${t('tasks')}</h1><p>${D.tasks.length} tasks</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.tasks,'opgaveliste.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-task')">+ New Task</button>`:''}</div></div>
-    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="tSearch" onkeyup="searchState.tSearch=this.value;render()"></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="tSearch" onkeyup="searchState.tSearch=this.value;document.getElementById('tTbl').innerHTML=tTbl(sortData(D.tasks,'tasks'))"></div>
     <div id="tTbl">${tTbl(data)}</div></div>`;
 }
 function tTbl(data) {
@@ -567,7 +568,7 @@ function tTbl(data) {
 function rLoosegear() {
     const data = sortData(D.loosegear, 'loosegear');
     return `<div class="page-header"><div><h1>${t('loosegear')}</h1><p>${D.loosegear.length} items</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.loosegear,'loosegear.csv')">&#8681; ${t('exportExcel')}</button>${isAdmin()?`<button class="btn btn-primary" onclick="nav('new-loosegear')">+ Add Loosegear</button>`:''}</div></div>
-    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="lgSearch" onkeyup="searchState.lgSearch=this.value;render()"></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="lgSearch" onkeyup="searchState.lgSearch=this.value;document.getElementById('lgTbl').innerHTML=lgTbl(sortData(D.loosegear,'loosegear'))"></div>
     <div id="lgTbl">${lgTbl(data)}</div></div>`;
 }
 function lgTbl(data) {
@@ -583,7 +584,7 @@ function lgTbl(data) {
 function rTimeline() {
     const sorted = sortData(D.timeline, 'timeline');
     return `<div class="page-header"><div><h1>${t('timeline')}</h1><p>${D.timeline.length} movements</p></div><div style="display:flex;gap:8px;"><button class="btn" onclick="exportCSV(D.timeline,'timeline.csv')">&#8681; ${t('exportExcel')}</button></div></div>
-    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="tlSearch" onkeyup="searchState.tlSearch=this.value;render()"></div>
+    <div class="card"><div class="filters-bar"><input placeholder="${t('search')}" id="tlSearch" onkeyup="searchState.tlSearch=this.value;document.getElementById('tlTbl').innerHTML=tlTbl(sortData(D.timeline,'timeline'))"></div>
     <div id="tlTbl">${tlTbl(sorted)}</div></div>`;
 }
 function tlTbl(data) {
