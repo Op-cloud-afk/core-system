@@ -146,6 +146,14 @@
         .col-filter-dropdown .cfd-apply button { padding: 5px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; background: var(--accent-blue); color: white; }
         .col-filter-dropdown .cfd-apply button:hover { background: #2563eb; }
         .data-table th { position: relative; }
+        /* Customer dropdown with add-new */
+        .cust-select-wrap { position: relative; }
+        .cust-select-wrap select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; color: var(--text); background: white; appearance: auto; }
+        .cust-new-input { display: none; margin-top: 8px; }
+        .cust-new-input.show { display: flex; gap: 8px; }
+        .cust-new-input input { flex: 1; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; color: var(--text); }
+        .cust-new-input button { padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--accent-blue); background: var(--accent-blue); color: white; white-space: nowrap; }
+        .cust-new-input button:hover { background: #2563eb; }
         .hidden { display: none !important; }
         @media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
         @media (max-width: 768px) {
@@ -611,6 +619,64 @@ function doGlobalSearch() {
     }
 }
 
+// === CUSTOMER DROPDOWN HELPER ===
+function getCustomerList() {
+    const names = new Set();
+    // From Clients SharePoint list
+    D.clients.forEach(c => { const n = c.Title || c.Navn || c.Name || ''; if(n) names.add(n); });
+    // From existing data
+    D.containers.forEach(r => { if(r['Firma']) names.add(String(r['Firma'])); if(r['Lejer']) names.add(String(r['Lejer'])); });
+    D.certificates.forEach(r => { if(r['Kunde']) names.add(String(r['Kunde'])); });
+    D.tasks.forEach(r => { if(r['Kunde']) names.add(String(r['Kunde'])); });
+    D.loosegear.forEach(r => { if(r['Kunde']) names.add(String(r['Kunde'])); });
+    D.timeline.forEach(r => { if(r['Kunde']) names.add(String(r['Kunde'])); });
+    names.delete(''); names.delete('-');
+    return Array.from(names).sort((a,b) => a.localeCompare(b, undefined, {sensitivity:'base'}));
+}
+
+function customerSelect(id) {
+    const list = getCustomerList();
+    return `<div class="cust-select-wrap">
+        <select id="${id}" onchange="onCustSelect(this)">
+            <option value="">-- Select customer --</option>
+            <option value="__new__">+ Add new customer</option>
+            ${list.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}
+        </select>
+        <div class="cust-new-input" id="${id}_new">
+            <input type="text" placeholder="Enter new customer name..." id="${id}_newval">
+            <button type="button" onclick="confirmNewCust('${id}')">OK</button>
+        </div>
+    </div>`;
+}
+
+function onCustSelect(sel) {
+    const newDiv = document.getElementById(sel.id + '_new');
+    if (sel.value === '__new__') {
+        newDiv.classList.add('show');
+        document.getElementById(sel.id + '_newval').focus();
+    } else {
+        newDiv.classList.remove('show');
+    }
+}
+
+function confirmNewCust(id) {
+    const val = document.getElementById(id + '_newval').value.trim();
+    if (!val) return;
+    const sel = document.getElementById(id);
+    // Add as new option and select it
+    const opt = document.createElement('option');
+    opt.value = val; opt.textContent = val;
+    sel.insertBefore(opt, sel.querySelector('option:last-child').nextSibling);
+    sel.value = val;
+    document.getElementById(id + '_new').classList.remove('show');
+}
+
+function getCustVal(id) {
+    const sel = document.getElementById(id);
+    if (sel.value === '__new__') return document.getElementById(id + '_newval').value.trim();
+    return sel.value;
+}
+
 // === DASHBOARD ===
 function rDash() {
     const recent = D.timeline.slice(-10).reverse();
@@ -781,7 +847,7 @@ function rNewCert() {
     <div class="card"><form onsubmit="saveNewCert(event)">
         <div class="form-row">
             <div class="form-group"><label>Cert No. <span class="req">*</span></label><input type="text" id="f_certno" required></div>
-            <div class="form-group"><label>Customer</label><input type="text" id="f_kunde"></div>
+            <div class="form-group"><label>Customer</label>${customerSelect('f_kunde')}</div>
         </div>
         <div class="form-row">
             <div class="form-group"><label>Type</label><input type="text" id="f_type"></div>
@@ -804,7 +870,7 @@ async function saveNewCert(e) {
     try {
         await addExcelRow('certificates', [
             document.getElementById('f_certno').value,
-            document.getElementById('f_kunde').value,
+            getCustVal('f_kunde'),
             document.getElementById('f_type').value,
             document.getElementById('f_maaned').value,
             document.getElementById('f_unit').value,
@@ -828,7 +894,7 @@ function rNewTask() {
             <div class="form-group"><label>Received Date</label><input type="date" id="f_jobdat"></div>
         </div>
         <div class="form-group"><label>Description</label><textarea id="f_beskr"></textarea></div>
-        <div class="form-group"><label>Customer</label><input type="text" id="f_jobkunde"></div>
+        <div class="form-group"><label>Customer</label>${customerSelect('f_jobkunde')}</div>
         <div class="form-actions"><button type="button" class="btn" onclick="nav('tasks')">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
     </form></div>`;
 }
@@ -839,7 +905,7 @@ async function saveNewTask(e) {
             document.getElementById('f_jobno').value,
             document.getElementById('f_jobdat').value,
             document.getElementById('f_beskr').value,
-            document.getElementById('f_jobkunde').value
+            getCustVal('f_jobkunde')
         ]);
         toast('Task added','success');
         await loadData();
@@ -853,7 +919,7 @@ function rNewLoosegear() {
     <div class="card"><form onsubmit="saveNewLoosegear(event)">
         <div class="form-row">
             <div class="form-group"><label>Cert No. <span class="req">*</span></label><input type="text" id="f_lgcertno" required></div>
-            <div class="form-group"><label>Customer</label><input type="text" id="f_lgkunde"></div>
+            <div class="form-group"><label>Customer</label>${customerSelect('f_lgkunde')}</div>
         </div>
         <div class="form-row">
             <div class="form-group"><label>Inspection Date</label><input type="date" id="f_lgdato"></div>
@@ -868,7 +934,7 @@ async function saveNewLoosegear(e) {
     try {
         await addExcelRow('loosegear', [
             document.getElementById('f_lgcertno').value,
-            document.getElementById('f_lgkunde').value,
+            getCustVal('f_lgkunde'),
             document.getElementById('f_lgdato').value,
             document.getElementById('f_lgbeskr').value,
             document.getElementById('f_lghvem').value
