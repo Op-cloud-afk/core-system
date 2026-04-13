@@ -148,23 +148,25 @@
         .data-table th { position: relative; }
         .data-table tr.clickable-row { cursor: pointer; }
         .data-table tr.clickable-row:hover { background: #e8f0fe; }
-        /* Container detail view */
-        .detail-back { display: inline-flex; align-items: center; gap: 6px; color: var(--accent-blue); font-size: 14px; font-weight: 500; cursor: pointer; margin-bottom: 20px; }
+        /* Detail view — compact */
+        .detail-back { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-blue); font-size: 13px; font-weight: 500; cursor: pointer; margin-bottom: 12px; }
         .detail-back:hover { text-decoration: underline; }
-        .detail-header { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
-        .detail-header .detail-icon { width: 56px; height: 56px; border-radius: 14px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
-        .detail-header h1 { font-size: 24px; font-weight: 700; }
-        .detail-header .detail-sub { color: var(--text-secondary); font-size: 14px; margin-top: 2px; }
-        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
-        .detail-field { padding: 14px 18px; background: var(--bg); border-radius: 10px; border: 1px solid var(--border); }
-        .detail-field .df-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 4px; }
-        .detail-field .df-value { font-size: 15px; font-weight: 500; color: var(--text); word-break: break-word; }
-        .detail-field .df-value.empty { color: var(--text-secondary); font-style: italic; }
-        .detail-images { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
-        .detail-img-card { border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: white; }
-        .detail-img-card img { width: 100%; height: 200px; object-fit: cover; display: block; }
-        .detail-img-card .img-info { padding: 10px 14px; font-size: 12px; color: var(--text-secondary); }
-        .detail-img-card .img-loading { width: 100%; height: 200px; display: flex; align-items: center; justify-content: center; background: var(--bg); color: var(--text-secondary); font-size: 13px; }
+        .detail-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .detail-header .detail-icon { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .detail-header h1 { font-size: 20px; font-weight: 700; }
+        .detail-header .detail-sub { color: var(--text-secondary); font-size: 13px; margin-top: 1px; }
+        .detail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+        .detail-field { padding: 10px 14px; background: white; }
+        .detail-field .df-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-secondary); margin-bottom: 2px; }
+        .detail-field .df-value { font-size: 14px; font-weight: 500; color: var(--text); word-break: break-word; }
+        .detail-field .df-value.empty { color: #cbd5e1; font-style: italic; font-weight: 400; }
+        .detail-images { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+        .detail-img-card { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: white; }
+        .detail-img-card img { width: 100%; height: 180px; object-fit: cover; display: block; }
+        .detail-img-card .img-info { padding: 8px 12px; font-size: 11px; color: var(--text-secondary); }
+        .detail-img-card .img-loading { width: 100%; height: 180px; display: flex; align-items: center; justify-content: center; background: var(--bg); color: var(--text-secondary); font-size: 13px; }
+        @media (max-width: 900px) { .detail-grid { grid-template-columns: 1fr 1fr; } }
+        @media (max-width: 600px) { .detail-grid { grid-template-columns: 1fr; } }
         /* Customer dropdown with add-new */
         .cust-select-wrap { position: relative; }
         .cust-select-wrap select { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; color: var(--text); background: white; appearance: auto; }
@@ -787,32 +789,18 @@ function rContainerDetail() {
     return `<div class="detail-back" onclick="nav('containers')">&#8592; Back to Containers</div>
     <div class="detail-header">
         <div class="detail-icon">&#9744;</div>
-        <div>
-            <h1>${esc(unitId)}</h1>
-            <div class="detail-sub">Container #${esc(c['løbenr.']||'')} &middot; ${esc(c['Effekt']||'Unknown type')} &middot; ${esc(c['Firma']||'')}</div>
-        </div>
+        <div><h1>${esc(unitId)}</h1><div class="detail-sub">Container #${esc(c['løbenr.']||'')} &middot; ${esc(c['Effekt']||'Unknown type')} &middot; ${esc(c['Firma']||'')}</div></div>
     </div>
-    <div class="card" style="margin-bottom:24px">
-        <div class="card-header"><h3>Container Details</h3></div>
-        <div class="detail-grid">
-            ${fields.map(f => {
-                const v = f.val;
-                const empty = !v || v === '-' || v === '0' || v === 0;
-                return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty ? 'N/A' : esc(String(v))}</div></div>`;
-            }).join('')}
-        </div>
+    <div class="detail-grid" style="margin-bottom:16px">
+        ${fields.map(f => { const v=f.val; const empty=!v||v==='-'||v==='0'||v===0; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
     </div>
-    <div class="card" style="margin-bottom:24px">
-        <div class="card-header"><h3>Photos</h3></div>
-        <div id="containerImages" class="detail-images">
-            ${related.some(r => r.Billede) ? '<div class="img-loading"><div class="spinner"></div>Loading images...</div>' : '<div class="empty-state">No photos available for this container</div>'}
-        </div>
+    <h4 style="margin-bottom:8px;font-size:14px;color:var(--text-secondary)">Photos</h4>
+    <div id="containerImages" class="detail-images" style="margin-bottom:16px">
+        ${related.some(r => r.Billede) ? '<div class="img-loading"><div class="spinner"></div>Loading images...</div>' : '<div class="empty-state" style="padding:20px">No photos available</div>'}
     </div>
-    ${related.length ? `<div class="card">
-        <div class="card-header"><h3>Movement History (${related.length})</h3></div>
-        <div class="table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>In/Out</th><th>Carrier</th><th>Customer</th><th>Service</th><th>Who</th><th>Status</th></tr></thead><tbody>
-        ${related.sort((a,b) => new Date(b.Dato||0) - new Date(a.Dato||0)).map(e => `<tr><td>${fmtDate(e.Dato)}</td><td>${isIn(e.Ind_x002f_ud)?'<span class="badge badge-green">IN</span>':isOut(e.Ind_x002f_ud)?'<span class="badge badge-amber">OUT</span>':'<span class="badge badge-gray">${esc(String(e.Ind_x002f_ud||'-'))}</span>'}</td><td>${esc(exName(e.Vognmand))}</td><td>${esc(e.Kunde||'-')}</td><td>${svcVal(e.Service)?'<span class="badge badge-'+svcColor(e.Service)+'">'+esc(svcVal(e.Service))+'</span>':'-'}</td><td>${esc(exName(e.Hvem))}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table></div>
-    </div>` : ''}`;
+    ${related.length ? `<h4 style="margin-bottom:8px;font-size:14px;color:var(--text-secondary)">Movement History (${related.length})</h4>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>In/Out</th><th>Carrier</th><th>Customer</th><th>Service</th><th>Who</th><th>Status</th></tr></thead><tbody>
+    ${related.sort((a,b) => new Date(b.Dato||0) - new Date(a.Dato||0)).map(e => `<tr><td>${fmtDate(e.Dato)}</td><td>${isIn(e.Ind_x002f_ud)?'<span class="badge badge-green">IN</span>':isOut(e.Ind_x002f_ud)?'<span class="badge badge-amber">OUT</span>':'<span class="badge badge-gray">${esc(String(e.Ind_x002f_ud||'-'))}</span>'}</td><td>${esc(exName(e.Vognmand))}</td><td>${esc(e.Kunde||'-')}</td><td>${svcVal(e.Service)?'<span class="badge badge-'+svcColor(e.Service)+'">'+esc(svcVal(e.Service))+'</span>':'-'}</td><td>${esc(exName(e.Hvem))}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table></div>` : ''}`;
 }
 
 async function loadContainerImages() {
@@ -956,15 +944,12 @@ function rCertDetail() {
         <div><h1>Certificate ${esc(c['Certifikat nr.']||'')}</h1>
         <div class="detail-sub">${esc(c['Type']||'')} &middot; ${esc(c['Kunde']||'')} &middot; ${esc(c['Måned']||'')}</div></div>
     </div>
-    <div class="card" style="margin-bottom:24px">
-        <div class="card-header"><h3>Certificate Details</h3></div>
-        <div class="detail-grid">
-            ${fields.map(f => { const v=f.val; const empty=!v||v==='-'; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
-        </div>
+    <div class="detail-grid" style="margin-bottom:16px">
+        ${fields.map(f => { const v=f.val; const empty=!v||v==='-'; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
     </div>
-    ${relContainers.length ? `<div class="card"><div class="card-header"><h3>Related Containers</h3></div>
+    ${relContainers.length ? `<h4 style="margin-bottom:8px;font-size:14px;color:var(--text-secondary)">Related Containers</h4>
     <div class="table-wrap"><table class="data-table"><thead><tr><th>No.</th><th>Type</th><th>ID</th><th>Company</th><th>Lessee</th></tr></thead><tbody>
-    ${relContainers.map(e=>`<tr class="clickable-row" onclick="openContainer(0,'${esc(e['løbenr.'])}')"><td>${esc(e['løbenr.']||'-')}</td><td>${esc(e['Effekt']||'-')}</td><td class="container-number">${esc((e['Præfix']||'')+' '+(e['958112-5']||''))}</td><td>${esc(e['Firma']||'-')}</td><td>${esc(e['Lejer']||'-')}</td></tr>`).join('')}</tbody></table></div></div>` : ''}`;
+    ${relContainers.map(e=>`<tr class="clickable-row" onclick="openContainer(0,'${esc(e['løbenr.'])}')"><td>${esc(e['løbenr.']||'-')}</td><td>${esc(e['Effekt']||'-')}</td><td class="container-number">${esc((e['Præfix']||'')+' '+(e['958112-5']||''))}</td><td>${esc(e['Firma']||'-')}</td><td>${esc(e['Lejer']||'-')}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
 }
 
 // === TASK DETAIL ===
@@ -989,11 +974,8 @@ function rTaskDetail() {
         <div><h1>Task ${esc(tk['Job nr']||'')}</h1>
         <div class="detail-sub">${esc(tk['Beskrivelse']||'')} &middot; ${esc(tk['Kunde']||'')}</div></div>
     </div>
-    <div class="card">
-        <div class="card-header"><h3>Task Details</h3></div>
-        <div class="detail-grid">
-            ${fields.map(f => { const v=f.val; const empty=!v||v==='-'||v===0; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
-        </div>
+    <div class="detail-grid">
+        ${fields.map(f => { const v=f.val; const empty=!v||v==='-'||v===0; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
     </div>`;
 }
 
@@ -1024,11 +1006,8 @@ function rLgDetail() {
         <div><h1>Loosegear ${esc(l['Certifikat Nr']||'')}</h1>
         <div class="detail-sub">${esc(l['Beskrivelse']||'')} &middot; ${esc(l['Kunde']||'')}</div></div>
     </div>
-    <div class="card">
-        <div class="card-header"><h3>Loosegear Details</h3></div>
-        <div class="detail-grid">
-            ${fields.map(f => { const v=f.val; const empty=!v||v==='-'||v===0; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
-        </div>
+    <div class="detail-grid">
+        ${fields.map(f => { const v=f.val; const empty=!v||v==='-'||v===0; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
     </div>`;
 }
 
@@ -1063,17 +1042,12 @@ function rTlDetail() {
         <div><h1>${esc(e.Unitid||'Movement')} &mdash; ${fmtDate(e.Dato)}</h1>
         <div class="detail-sub">${isIn(e.Ind_x002f_ud)?'IN':isOut(e.Ind_x002f_ud)?'OUT':esc(String(e.Ind_x002f_ud||''))} &middot; ${esc(e.Kunde||'')} &middot; ${esc(svcVal(e.Service)||'')}</div></div>
     </div>
-    <div class="card" style="margin-bottom:24px">
-        <div class="card-header"><h3>Movement Details</h3></div>
-        <div class="detail-grid">
-            ${fields.map(f => { const v=f.val; const empty=!v||v==='-'; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
-        </div>
+    <div class="detail-grid" style="margin-bottom:16px">
+        ${fields.map(f => { const v=f.val; const empty=!v||v==='-'; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
     </div>
-    <div class="card">
-        <div class="card-header"><h3>Photo</h3></div>
-        <div id="tlDetailImg" class="detail-images">
-            ${hasPic ? '<div class="img-loading"><div class="spinner"></div>Loading image...</div>' : '<div class="empty-state">No photo for this entry</div>'}
-        </div>
+    <h4 style="margin-bottom:8px;font-size:14px;color:var(--text-secondary)">Photo</h4>
+    <div id="tlDetailImg" class="detail-images">
+        ${hasPic ? '<div class="img-loading"><div class="spinner"></div>Loading image...</div>' : '<div class="empty-state" style="padding:20px">No photo for this entry</div>'}
     </div>`;
 }
 async function loadTimelineImage() {
