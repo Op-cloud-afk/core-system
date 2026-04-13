@@ -713,11 +713,11 @@ function rDash() {
     <div class="two-col">
         <div class="card"><div class="card-header"><h3>Recent Activity</h3></div>
         ${recent.length?`<div class="table-wrap"><table class="data-table"><thead><tr><th>${t('date')}</th><th>${t('unitId')}</th><th>${t('who')}</th><th>${t('service')}</th><th>${t('status')}</th></tr></thead><tbody>
-        ${recent.map(e=>`<tr><td>${fmtDate(e.Dato)}</td><td class="container-number">${esc(e.Unitid||'-')}</td><td>${esc(exName(e.Hvem))}</td><td>${svcVal(e.Service)?`<span class="badge badge-${svcColor(e.Service)}">${esc(svcVal(e.Service))}</span>`:'-'}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table></div>`:`<div class="empty-state">${t('noData')}</div>`}
+        ${recent.map(e=>`<tr class="clickable-row" onclick="openTimeline('${esc(e.id)}')"><td>${fmtDate(e.Dato)}</td><td class="container-number">${esc(e.Unitid||'-')}</td><td>${esc(exName(e.Hvem))}</td><td>${svcVal(e.Service)?`<span class="badge badge-${svcColor(e.Service)}">${esc(svcVal(e.Service))}</span>`:'-'}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table></div>`:`<div class="empty-state">${t('noData')}</div>`}
         </div>
         <div class="card"><div class="card-header"><h3>Recent Certificates</h3></div>
         ${rcerts.length?`<div class="table-wrap"><table class="data-table"><thead><tr><th>Cert Nr</th><th>Kunde</th><th>Måned</th></tr></thead><tbody>
-        ${rcerts.map(c=>`<tr><td class="container-number">${esc(c['Certifikat nr.']||'-')}</td><td>${esc(c['Kunde']||'-')}</td><td>${esc(c['Måned']||'-')}</td></tr>`).join('')}</tbody></table></div>`:`<div class="empty-state">${t('noData')}</div>`}
+        ${rcerts.map(c=>`<tr class="clickable-row" onclick="openCert('${esc(c['Certifikat nr.'])}')"><td class="container-number">${esc(c['Certifikat nr.']||'-')}</td><td>${esc(c['Kunde']||'-')}</td><td>${esc(c['Måned']||'-')}</td></tr>`).join('')}</tbody></table></div>`:`<div class="empty-state">${t('noData')}</div>`}
         </div>
     </div>`;
 }
