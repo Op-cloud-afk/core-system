@@ -160,11 +160,15 @@
         .detail-field .df-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-secondary); margin-bottom: 2px; }
         .detail-field .df-value { font-size: 14px; font-weight: 500; color: var(--text); word-break: break-word; }
         .detail-field .df-value.empty { color: #cbd5e1; font-style: italic; font-weight: 400; }
-        .detail-images { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
-        .detail-img-card { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: white; }
-        .detail-img-card img { width: 100%; height: 180px; object-fit: cover; display: block; }
-        .detail-img-card .img-info { padding: 8px 12px; font-size: 11px; color: var(--text-secondary); }
-        .detail-img-card .img-loading { width: 100%; height: 180px; display: flex; align-items: center; justify-content: center; background: var(--bg); color: var(--text-secondary); font-size: 13px; }
+        .detail-images { display: flex; gap: 10px; flex-wrap: wrap; }
+        .detail-img-card { border-radius: 8px; overflow: hidden; border: 1px solid var(--border); background: white; width: 160px; flex-shrink: 0; }
+        .detail-img-card img { width: 100%; height: 120px; object-fit: cover; display: block; cursor: pointer; }
+        .detail-img-card img:hover { opacity: 0.85; }
+        .detail-img-card .img-info { padding: 5px 8px; font-size: 10px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .detail-img-card .img-loading { width: 160px; height: 120px; display: flex; align-items: center; justify-content: center; background: var(--bg); color: var(--text-secondary); font-size: 12px; }
+        /* Fullscreen image overlay */
+        .img-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .img-overlay img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.5); }
         @media (max-width: 1100px) { .detail-grid { grid-template-columns: repeat(3, 1fr); } }
         @media (max-width: 800px) { .detail-grid { grid-template-columns: 1fr 1fr; } }
         @media (max-width: 500px) { .detail-grid { grid-template-columns: 1fr; } }
@@ -320,6 +324,50 @@ async function gPatch(url,body) {
     if(!r.ok) { const t = await r.text(); throw new Error('Graph '+r.status+': '+t); }
     return r.json();
 }
+function showFullImg(src) { const o=document.createElement('div');o.className='img-overlay';o.onclick=()=>o.remove();o.innerHTML=`<img src="${src}">`;document.body.appendChild(o); }
+let spAccessToken = null;
+async function getSPToken() {
+    if (spAccessToken) return spAccessToken;
+    const spHost = 'https://' + SP_HOST;
+    try {
+        const resp = await msal_app.acquireTokenSilent({scopes: [spHost + '/.default'], account});
+        spAccessToken = resp.accessToken;
+        return spAccessToken;
+    } catch(e) {
+        await msal_app.acquireTokenRedirect({scopes: [spHost + '/.default']});
+        throw new Error('Redirecting for SP token...');
+    }
+}
+
+async function loadItemAttachmentImages(itemId, targetDivId, infoHtml) {
+    const div = document.getElementById(targetDivId);
+    if (!div) return;
+    try {
+        const spToken = await getSPToken();
+        const siteUrl = 'https://' + SP_HOST + SP_PATH;
+        const url = `${siteUrl}/_api/web/lists/getbytitle('Truckliste')/items(${itemId})/AttachmentFiles`;
+        const r = await fetch(url, {headers: {'Authorization': 'Bearer ' + spToken, 'Accept': 'application/json;odata=verbose'}});
+        if (!r.ok) { div.innerHTML = '<div class="empty-state" style="padding:20px">Could not load images</div>'; return; }
+        const data = await r.json();
+        const files = (data.d?.results || []).filter(f => /\.(jpe?g|png|gif|webp|bmp)$/i.test(f.FileName));
+        if (!files.length) { div.innerHTML = '<div class="empty-state" style="padding:20px">No photos available</div>'; return; }
+
+        const cards = [];
+        for (const f of files) {
+            const encName = encodeURIComponent(f.FileName);
+            const binUrl = `${siteUrl}/_api/web/lists/getbytitle('Truckliste')/items(${itemId})/AttachmentFiles('${encName}')/$value`;
+            try {
+                const imgR = await fetch(binUrl, {headers: {'Authorization': 'Bearer ' + spToken}});
+                if (!imgR.ok) continue;
+                const blob = await imgR.blob();
+                const objUrl = URL.createObjectURL(blob);
+                cards.push(`<div class="detail-img-card"><img src="${objUrl}" onclick="showFullImg(this.src)"><div class="img-info">${infoHtml}</div></div>`);
+            } catch(e) { console.warn('Img fetch error:', e); }
+        }
+        div.innerHTML = cards.length ? cards.join('') : '<div class="empty-state" style="padding:20px">Could not load images</div>';
+    } catch(e) { console.warn('loadItemAttachmentImages error:', e); div.innerHTML = '<div class="empty-state" style="padding:20px">Could not load images</div>'; }
+}
+
 async function getSite() { if(siteId) return siteId; const d = await gGet(`https://graph.microsoft.com/v1.0/sites/${SP_HOST}:${SP_PATH}`); siteId=d.id; return siteId; }
 async function getList(name) {
     const s = await getSite(); let url=`https://graph.microsoft.com/v1.0/sites/${s}/lists/${name}/items?$expand=fields&$top=500`, all=[];
@@ -405,33 +453,46 @@ function fmtDate(s) {
 }
 
 // === DATA ===
+let loadingCount = 0;
+let loadingTotal = 6;
+
 async function loadData() {
-    document.getElementById('page').innerHTML = `<div class="loading"><div class="spinner"></div>${t('loading')}</div>`;
-    try {
-        const [containers, certificates, tasks, loosegear, timeline, clients] = await Promise.all([
-            readExcelSheet('containers').catch(e=>(console.warn('Containers error:',e),[])),
-            readExcelSheet('certificates').catch(e=>(console.warn('Certificates error:',e),[])),
-            readExcelSheet('tasks').catch(e=>(console.warn('Tasks error:',e),[])),
-            readExcelSheet('loosegear').catch(e=>(console.warn('Loosegear error:',e),[])),
-            getList('Truckliste').catch(e=>(console.warn('Timeline error:',e),[])),
-            getList('Clients').catch(e=>(console.warn('Clients error:',e),[]))
-        ]);
+    // Show dashboard immediately with empty data
+    dataLoaded = true;
+    loadingCount = 0;
+    render();
 
-        D.containers = containers;
-        D.certificates = certificates;
-        D.tasks = tasks;
-        D.loosegear = loosegear;
-        D.timeline = timeline.map(i=>({id:i.id,...i.fields}));
-        D.clients = clients.map(i=>({id:i.id,...i.fields}));
+    // Load each source progressively — render after each one arrives
+    const sources = [
+        { name: 'containers', fn: () => readExcelSheet('containers'), apply: d => { D.containers = d; } },
+        { name: 'certificates', fn: () => readExcelSheet('certificates'), apply: d => { D.certificates = d; } },
+        { name: 'tasks', fn: () => readExcelSheet('tasks'), apply: d => { D.tasks = d; } },
+        { name: 'loosegear', fn: () => readExcelSheet('loosegear'), apply: d => { D.loosegear = d; } },
+        { name: 'timeline', fn: () => getList('Truckliste'), apply: d => { D.timeline = d.map(i=>({id:i.id,...i.fields})); } },
+        { name: 'clients', fn: () => getList('Clients'), apply: d => { D.clients = d.map(i=>({id:i.id,...i.fields})); } },
+    ];
 
-        dataLoaded = true;
-        toast(`Loaded ${D.containers.length} containers, ${D.certificates.length} certs, ${D.tasks.length} tasks, ${D.loosegear.length} loosegear items`,'success');
-    } catch(e) { toast('Load error: '+e.message,'error'); }
+    // Fire all requests in parallel but render as each completes
+    const promises = sources.map(src =>
+        src.fn().then(data => {
+            src.apply(data);
+            loadingCount++;
+            render();
+            if (loadingCount === loadingTotal) {
+                toast(`Loaded ${D.containers.length} containers, ${D.certificates.length} certs, ${D.tasks.length} tasks, ${D.loosegear.length} loosegear`,'success');
+            }
+        }).catch(e => {
+            console.warn(src.name + ' error:', e);
+            loadingCount++;
+            if (loadingCount === loadingTotal) render();
+        })
+    );
+
+    await Promise.all(promises);
 }
 
 // === NAV ===
 function nav(p,d) {
-    if(!dataLoaded){toast('Still loading data, please wait...','info');return;}
     if(!isAdmin()&&(p==='new-entry'||p==='new-cert'||p==='new-task'||p==='new-loosegear'||p==='admin')){toast('Access denied — admin only','error');return;}
     page=p;
     document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===p));
@@ -440,7 +501,6 @@ function nav(p,d) {
 }
 function render() {
     const el=document.getElementById('page');
-    if(!dataLoaded){el.innerHTML=`<div class="loading"><div class="spinner"></div>${t('loading')}</div>`;return;}
     // Save search values before re-render
     ['cSearch','ceSearch','tSearch','lgSearch','tlSearch','globalSearch'].forEach(id=>{const inp=document.getElementById(id);if(inp)searchState[id]=inp.value;});
     el.innerHTML='<div class="main-inner">'+({dashboard:rDash,containers:rContainers,'container-detail':rContainerDetail,certificates:rCerts,'cert-detail':rCertDetail,tasks:rTasks,'task-detail':rTaskDetail,loosegear:rLoosegear,'lg-detail':rLgDetail,timeline:rTimeline,'tl-detail':rTlDetail,admin:rAdmin,'new-entry':rNewEntry,'new-cert':rNewCert,'new-task':rNewTask,'new-loosegear':rNewLoosegear}[page]||rDash)()+'</div>';
@@ -700,15 +760,17 @@ function getCustVal(id) {
 }
 
 // === DASHBOARD ===
+function kpiVal(arr) { return loadingCount < loadingTotal && arr.length === 0 ? '<span style="opacity:0.3">...</span>' : arr.length; }
 function rDash() {
     const recent = D.timeline.slice(-10).reverse();
     const rcerts = D.certificates.slice(-5).reverse();
-    return `<div class="page-header"><div><h1>${t('dashboard')}</h1><p>Overview of container management system</p></div></div>
+    const still = loadingCount < loadingTotal ? ` <span style="font-size:12px;color:var(--text-secondary);font-weight:400">(loading ${loadingCount}/${loadingTotal})</span>` : '';
+    return `<div class="page-header"><div><h1>${t('dashboard')}${still}</h1><p>Overview of container management system</p></div></div>
     <div class="kpi-grid">
-        <div class="kpi-card" onclick="nav('containers')"><div class="kpi-label">${t('containers')} <div class="kpi-icon" style="background:#dcfce7;color:#166534;">&#9744;</div></div><div class="kpi-value">${D.containers.length}</div><div class="kpi-sub">Total containers</div></div>
-        <div class="kpi-card" onclick="nav('certificates')"><div class="kpi-label">${t('certificates')} <div class="kpi-icon" style="background:#dbeafe;color:#1e40af;">&#9873;</div></div><div class="kpi-value">${D.certificates.length}</div><div class="kpi-sub">Certificates issued</div></div>
-        <div class="kpi-card" onclick="nav('tasks')"><div class="kpi-label">Tasks <div class="kpi-icon" style="background:#fef3c7;color:#92400e;">&#9888;</div></div><div class="kpi-value">${D.tasks.length}</div><div class="kpi-sub">Active tasks</div></div>
-        <div class="kpi-card" onclick="nav('loosegear')"><div class="kpi-label">Loosegear <div class="kpi-icon" style="background:#ede9fe;color:#5b21b6;">&#128631;</div></div><div class="kpi-value">${D.loosegear.length}</div><div class="kpi-sub">Gear items</div></div>
+        <div class="kpi-card" onclick="nav('containers')"><div class="kpi-label">${t('containers')} <div class="kpi-icon" style="background:#dcfce7;color:#166534;">&#9744;</div></div><div class="kpi-value">${kpiVal(D.containers)}</div><div class="kpi-sub">Total containers</div></div>
+        <div class="kpi-card" onclick="nav('certificates')"><div class="kpi-label">${t('certificates')} <div class="kpi-icon" style="background:#dbeafe;color:#1e40af;">&#9873;</div></div><div class="kpi-value">${kpiVal(D.certificates)}</div><div class="kpi-sub">Certificates issued</div></div>
+        <div class="kpi-card" onclick="nav('tasks')"><div class="kpi-label">Tasks <div class="kpi-icon" style="background:#fef3c7;color:#92400e;">&#9888;</div></div><div class="kpi-value">${kpiVal(D.tasks)}</div><div class="kpi-sub">Active tasks</div></div>
+        <div class="kpi-card" onclick="nav('loosegear')"><div class="kpi-label">Loosegear <div class="kpi-icon" style="background:#ede9fe;color:#5b21b6;">&#128631;</div></div><div class="kpi-value">${kpiVal(D.loosegear)}</div><div class="kpi-sub">Gear items</div></div>
     </div>
     <div class="two-col">
         <div class="card"><div class="card-header"><h3>Recent Activity</h3></div>
@@ -797,7 +859,7 @@ function rContainerDetail() {
     </div>
     <h4 style="margin-bottom:8px;font-size:14px;color:var(--text-secondary)">Photos</h4>
     <div id="containerImages" class="detail-images" style="margin-bottom:16px">
-        ${related.some(r => r.Billede) ? '<div class="img-loading"><div class="spinner"></div>Loading images...</div>' : '<div class="empty-state" style="padding:20px">No photos available</div>'}
+        ${related.some(r => r.Attachments) ? '<div class="img-loading"><div class="spinner"></div>Loading images...</div>' : '<div class="empty-state" style="padding:20px">No photos available</div>'}
     </div>
     ${related.length ? `<h4 style="margin-bottom:8px;font-size:14px;color:var(--text-secondary)">Movement History (${related.length})</h4>
     <div class="table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>In/Out</th><th>Carrier</th><th>Customer</th><th>Service</th><th>Who</th><th>Status</th></tr></thead><tbody>
@@ -811,40 +873,38 @@ async function loadContainerImages() {
     const serial = (c['958112-5']||'').replace(/[-\s]/g,'');
 
     const related = D.timeline.filter(t => {
-        if (!t.Unitid || !t.Billede) return false;
+        if (!t.Unitid || !t.Attachments) return false;
         const uid = String(t.Unitid).toUpperCase().replace(/[-\s]/g,'');
         return uid.includes(prefix + serial) || uid === prefix + serial;
     });
 
-    if (!related.length) return;
+    if (!related.length) { const d=document.getElementById('containerImages'); if(d) d.innerHTML='<div class="empty-state" style="padding:20px">No photos available</div>'; return; }
 
     const imgDiv = document.getElementById('containerImages');
     if (!imgDiv) return;
 
-    const cards = [];
-    for (const entry of related) {
-        try {
-            const s = await getSite();
-            const url = `https://graph.microsoft.com/v1.0/sites/${s}/lists/Truckliste/items/${entry.id}?$expand=fields($select=Billede)`;
-            const data = await gGet(url);
-            const billedeField = data.fields?.Billede;
-
-            if (billedeField) {
-                let imgInfo;
-                try { imgInfo = typeof billedeField === 'string' ? JSON.parse(billedeField) : billedeField; } catch(e) { imgInfo = billedeField; }
-                const serverUrl = imgInfo.serverUrl || ('https://' + SP_HOST);
-                const serverRelUrl = imgInfo.serverRelativeUrl || '';
-
-                if (serverRelUrl) {
-                    const imgUrl = serverUrl + serverRelUrl;
-                    const tk = await getToken();
-                    cards.push(`<div class="detail-img-card"><img src="${imgUrl}" onerror="this.parentElement.innerHTML='<div class=img-loading>Could not load image</div>'"><div class="img-info">${fmtDate(entry.Dato)} &middot; ${esc(exName(entry.Hvem)||'')}</div></div>`);
+    try {
+        const spToken = await getSPToken();
+        const siteUrl = 'https://' + SP_HOST + SP_PATH;
+        const cards = [];
+        for (const entry of related) {
+            try {
+                const url = `${siteUrl}/_api/web/lists/getbytitle('Truckliste')/items(${entry.id})/AttachmentFiles`;
+                const r = await fetch(url, {headers: {'Authorization': 'Bearer ' + spToken, 'Accept': 'application/json;odata=verbose'}});
+                if (!r.ok) continue;
+                const data = await r.json();
+                const files = (data.d?.results || []).filter(f => /\.(jpe?g|png|gif|webp)$/i.test(f.FileName));
+                for (const f of files) {
+                    const binUrl = `${siteUrl}/_api/web/lists/getbytitle('Truckliste')/items(${entry.id})/AttachmentFiles('${encodeURIComponent(f.FileName)}')/$value`;
+                    const imgR = await fetch(binUrl, {headers: {'Authorization': 'Bearer ' + spToken}});
+                    if (!imgR.ok) continue;
+                    const blob = await imgR.blob();
+                    cards.push(`<div class="detail-img-card"><img src="${URL.createObjectURL(blob)}" onclick="showFullImg(this.src)"><div class="img-info">${fmtDate(entry.Dato)} &middot; ${esc(exName(entry.Hvem)||'')}</div></div>`);
                 }
-            }
-        } catch(e) { console.warn('Image load error for item '+entry.id+':', e); }
-    }
-
-    imgDiv.innerHTML = cards.length ? cards.join('') : '<div class="empty-state">No photos could be loaded</div>';
+            } catch(e) { console.warn('Img error item '+entry.id+':', e); }
+        }
+        imgDiv.innerHTML = cards.length ? cards.join('') : '<div class="empty-state" style="padding:20px">No photos available</div>';
+    } catch(e) { console.warn('loadContainerImages error:', e); imgDiv.innerHTML = '<div class="empty-state" style="padding:20px">Could not load images</div>'; }
 }
 
 // === CERTIFICATES ===
@@ -1036,7 +1096,7 @@ function rTlDetail() {
         {label: 'Created', val: fmtDate(e.Created)},
         {label: 'Modified', val: fmtDate(e.Modified)},
     ];
-    const hasPic = e.Billede && e.Billede !== '';
+    const hasPic = e.Attachments;
     return `<div class="detail-back" onclick="nav('timeline')">&#8592; Back to Timeline</div>
     <div class="detail-header">
         <div class="detail-icon" style="background:linear-gradient(135deg,#22c55e,#16a34a);">&#128337;</div>
@@ -1052,27 +1112,9 @@ function rTlDetail() {
     </div>`;
 }
 async function loadTimelineImage() {
-    if (!selectedTimeline || !selectedTimeline.Billede) return;
+    if (!selectedTimeline || !selectedTimeline.Attachments) return;
     const e = selectedTimeline;
-    const imgDiv = document.getElementById('tlDetailImg');
-    if (!imgDiv) return;
-    try {
-        const s = await getSite();
-        const url = `https://graph.microsoft.com/v1.0/sites/${s}/lists/Truckliste/items/${e.id}?$expand=fields($select=Billede)`;
-        const data = await gGet(url);
-        const billedeField = data.fields?.Billede;
-        if (billedeField) {
-            let imgInfo;
-            try { imgInfo = typeof billedeField === 'string' ? JSON.parse(billedeField) : billedeField; } catch(ex) { imgInfo = billedeField; }
-            const serverUrl = imgInfo.serverUrl || ('https://' + SP_HOST);
-            const serverRelUrl = imgInfo.serverRelativeUrl || '';
-            if (serverRelUrl) {
-                imgDiv.innerHTML = `<div class="detail-img-card"><img src="${serverUrl + serverRelUrl}" onerror="this.parentElement.innerHTML='<div class=img-loading>Could not load image</div>'"><div class="img-info">${fmtDate(e.Dato)} &middot; ${esc(exName(e.Hvem)||'')}</div></div>`;
-                return;
-            }
-        }
-        imgDiv.innerHTML = '<div class="empty-state">Could not load image</div>';
-    } catch(err) { console.warn('Timeline image error:', err); imgDiv.innerHTML = '<div class="empty-state">Could not load image</div>'; }
+    loadItemAttachmentImages(e.id, 'tlDetailImg', fmtDate(e.Dato) + ' &middot; ' + esc(exName(e.Hvem)||''));
 }
 
 // === ADMIN ===
