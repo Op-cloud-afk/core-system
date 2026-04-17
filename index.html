@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Core System - Container Management</title>
+    <title>Core System - Container Management (Azure SQL Test)</title>
     <script src="https://alcdn.msauth.net/browser/2.28.1/js/msal-browser.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -225,24 +225,15 @@
             <div class="user-badge"><div class="user-avatar" id="userAvatar">?</div><span id="userName">User</span><span id="userRoleBadge" class="role-badge" style="margin-left:4px;"></span></div>
         </div>
     </div>
+    <div style="background:#f59e0b;color:#1e293b;padding:8px 20px;text-align:center;font-size:13px;font-weight:600;border-bottom:1px solid #d97706;">TEST VERSION - Azure SQL Backend</div>
     <main class="main-content" id="page"></main>
 </div>
 
 <script>
 // === CONFIG ===
 const MSAL_CFG = { auth: { clientId:'5ba644e5-fc21-4305-ae9b-83cdc45a89a8', authority:'https://login.microsoftonline.com/4aeeed86-5b8d-4dc3-9f21-189804e8ef43', redirectUri: location.href.split('?')[0].split('#')[0] }, cache: { cacheLocation:'localStorage' } };
-const SCOPES = ['User.Read', 'Sites.Read.All', 'Files.Read.All'];
-const WRITE_SCOPES = ['User.Read', 'Sites.ReadWrite.All', 'Files.ReadWrite.All'];
-const DRIVE_ID = 'b!lOk5ETfZZ02Wysrm90FiSnBaxIkFL-9OkaI7gW2KbSjM4j_DuZh8RKzxOC9OqdTn';
-const SP_HOST = 'njcontaineroffshoreservi304.sharepoint.com', SP_PATH = '/sites/common';
-
-// Excel file IDs (item IDs from OneDrive)
-const EXCEL_ITEMS = {
-    containers: { itemId: '01XXVSIS4PXPSZ3AMPAFBLZUX3T6TYDS4B', sheet: '30.04.2026' },
-    certificates: { itemId: '01XXVSIS3YI2AZR2R37FB2IXEA22RWGP67', sheet: '2026' },
-    tasks: { itemId: '01XXVSIS5QHZEZZH7EL5BY74OFCT4D3DR2', sheet: 'Opgaveliste' },
-    loosegear: { itemId: '01XXVSIS4NYL7PWPZVWRAYMKJOSLAFCLH2', sheet: 'Ark1' }
-};
+const SCOPES = ['User.Read'];
+const API_BASE = '/api'; // Azure Functions API
 
 // RBAC: Add admin emails here
 const ADMIN_EMAILS = [
@@ -250,7 +241,7 @@ const ADMIN_EMAILS = [
     'gbk@njco.dk',
 ];
 
-let msal_app, account, siteId, page='dashboard', lang='en';
+let msal_app, account, page='dashboard', lang='en';
 let userRole = 'viewer';
 let D = { containers: [], certificates: [], tasks: [], loosegear: [], timeline: [], clients: [] };
 let dataLoaded = false;
@@ -279,14 +270,6 @@ async function initAuth() {
 }
 async function signIn() { document.getElementById('loginStatus').textContent='Signing in...'; await msal_app.loginRedirect({scopes:SCOPES}); }
 function signOut() { msal_app.logoutRedirect(); }
-async function getToken() {
-    try { return (await msal_app.acquireTokenSilent({scopes:SCOPES,account})).accessToken; }
-    catch(e) { if(e instanceof msal.InteractionRequiredAuthError) await msal_app.acquireTokenRedirect({scopes:SCOPES}); throw e; }
-}
-async function getWriteToken() {
-    try { return (await msal_app.acquireTokenSilent({scopes:WRITE_SCOPES,account})).accessToken; }
-    catch(e) { if(e instanceof msal.InteractionRequiredAuthError) await msal_app.acquireTokenRedirect({scopes:WRITE_SCOPES}); throw e; }
-}
 async function onAuth() {
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('appLayout').classList.add('active');
@@ -305,129 +288,105 @@ async function onAuth() {
 }
 function isAdmin() { return userRole === 'admin'; }
 
-// === GRAPH API ===
-async function gGet(url) {
-    const tk = await getToken();
-    const r = await fetch(url,{headers:{'Authorization':'Bearer '+tk,'Accept':'application/json'}});
-    if(!r.ok) throw new Error('Graph '+r.status+' '+r.statusText);
+// === API HELPERS ===
+async function apiGet(table) {
+    const r = await fetch(`${API_BASE}/data?table=${table}`);
+    if (!r.ok) throw new Error('API ' + r.status + ' ' + r.statusText);
+    const d = await r.json();
+    return d.data || [];
+}
+async function apiPost(table, body) {
+    const r = await fetch(`${API_BASE}/data?table=${table}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    if (!r.ok) { const t = await r.text(); throw new Error('API ' + r.status + ': ' + t); }
     return r.json();
 }
-async function gPost(url,body) {
-    const tk = await getWriteToken();
-    const r = await fetch(url,{method:'POST',headers:{'Authorization':'Bearer '+tk,'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!r.ok) { const t = await r.text(); throw new Error('Graph '+r.status+': '+t); }
-    return r.json();
-}
-async function gPatch(url,body) {
-    const tk = await getWriteToken();
-    const r = await fetch(url,{method:'PATCH',headers:{'Authorization':'Bearer '+tk,'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!r.ok) { const t = await r.text(); throw new Error('Graph '+r.status+': '+t); }
-    return r.json();
-}
+
 function showFullImg(src) { const o=document.createElement('div');o.className='img-overlay';o.onclick=()=>o.remove();o.innerHTML=`<img src="${src}">`;document.body.appendChild(o); }
-let spAccessToken = null;
-async function getSPToken() {
-    if (spAccessToken) return spAccessToken;
-    const spHost = 'https://' + SP_HOST;
-    try {
-        const resp = await msal_app.acquireTokenSilent({scopes: [spHost + '/.default'], account});
-        spAccessToken = resp.accessToken;
-        return spAccessToken;
-    } catch(e) {
-        await msal_app.acquireTokenRedirect({scopes: [spHost + '/.default']});
-        throw new Error('Redirecting for SP token...');
-    }
+
+// === DATA MAPPERS (SQL columns -> Excel-compatible field names) ===
+function mapContainers(rows) {
+    return rows.map(r => ({
+        'løbenr.': r.Id,
+        'Ejerskab': r.OwnerCode,
+        'Købsdato': r.PurchaseDate,
+        'Effekt': r.ContainerTypeId,
+        'Præfix': r.Prefix,
+        '958112-5': r.SerialNr,
+        'Firma': r.CurrentLocation || '',
+        'Købsfaktura - bilagnr': r.PurchaseInvoice,
+        'Købspris': r.PurchasePrice,
+        'Transport/køb': r.TransportCost,
+        'Salgsdato': r.SaleDate,
+        'Salgspris': r.SalePrice,
+        'Fakturanr': r.SaleInvoiceNr,
+        'Udlej.dato': r.RentalDate,
+        'Retur NJ': r.ReturnNr,
+        'Lejer': '',
+        'Køber': '',
+        'Slingnr.': '',
+        'Tjek 01.12.2025': '',
+        'Status': r.Status,
+        '_raw': r
+    }));
 }
 
-async function loadItemAttachmentImages(itemId, targetDivId, infoHtml) {
-    const div = document.getElementById(targetDivId);
-    if (!div) return;
-    try {
-        const spToken = await getSPToken();
-        const siteUrl = 'https://' + SP_HOST + SP_PATH;
-        const url = `${siteUrl}/_api/web/lists/getbytitle('Truckliste')/items(${itemId})/AttachmentFiles`;
-        const r = await fetch(url, {headers: {'Authorization': 'Bearer ' + spToken, 'Accept': 'application/json;odata=verbose'}});
-        if (!r.ok) { div.innerHTML = '<div class="empty-state" style="padding:20px">Could not load images</div>'; return; }
-        const data = await r.json();
-        const files = (data.d?.results || []).filter(f => /\.(jpe?g|png|gif|webp|bmp)$/i.test(f.FileName));
-        if (!files.length) { div.innerHTML = '<div class="empty-state" style="padding:20px">No photos available</div>'; return; }
-
-        const cards = [];
-        for (const f of files) {
-            const encName = encodeURIComponent(f.FileName);
-            const binUrl = `${siteUrl}/_api/web/lists/getbytitle('Truckliste')/items(${itemId})/AttachmentFiles('${encName}')/$value`;
-            try {
-                const imgR = await fetch(binUrl, {headers: {'Authorization': 'Bearer ' + spToken}});
-                if (!imgR.ok) continue;
-                const blob = await imgR.blob();
-                const objUrl = URL.createObjectURL(blob);
-                cards.push(`<div class="detail-img-card"><img src="${objUrl}" onclick="showFullImg(this.src)"><div class="img-info">${infoHtml}</div></div>`);
-            } catch(e) { console.warn('Img fetch error:', e); }
-        }
-        div.innerHTML = cards.length ? cards.join('') : '<div class="empty-state" style="padding:20px">Could not load images</div>';
-    } catch(e) { console.warn('loadItemAttachmentImages error:', e); div.innerHTML = '<div class="empty-state" style="padding:20px">Could not load images</div>'; }
+function mapCertificates(rows) {
+    return rows.map(r => ({
+        'Certifikat nr.': r.CertificateNr || r.Id,
+        'Kunde': r.CustomerName || r.CustomerId,
+        'Type': r.InspectionType || r.Type,
+        'Måned': r.Month,
+        'UNIT': r.UnitId,
+        'Sling nr.': r.SlingNr,
+        'Sidste 4 års ': r.Last4Years,
+        'Ordre.nr. ': r.OrderNr,
+        'Hvem': r.InspectorName || r.EmployeeId,
+        '_raw': r
+    }));
 }
 
-async function getSite() { if(siteId) return siteId; const d = await gGet(`https://graph.microsoft.com/v1.0/sites/${SP_HOST}:${SP_PATH}`); siteId=d.id; return siteId; }
-async function getList(name) {
-    const s = await getSite(); let url=`https://graph.microsoft.com/v1.0/sites/${s}/lists/${name}/items?$expand=fields&$top=500`, all=[];
-    while(url) { const d = await gGet(url); all=all.concat(d.value||[]); url=d['@odata.nextLink']||null; }
-    return all;
-}
-async function addItem(list,fields) { const s=await getSite(); return gPost(`https://graph.microsoft.com/v1.0/sites/${s}/lists/${list}/items`,{fields}); }
-
-// === EXCEL API ===
-async function readExcelSheet(type) {
-    const cfg = EXCEL_ITEMS[type];
-    const url = `https://graph.microsoft.com/v1.0/drives/${DRIVE_ID}/items/${cfg.itemId}/workbook/worksheets('${encodeURIComponent(cfg.sheet)}')/usedRange?$select=values`;
-    const data = await gGet(url);
-    const values = data.values || [];
-    if (values.length === 0) return [];
-
-    const headers = values[0];
-    const rows = [];
-
-    // Handle Opgave oversigt special case: row 0 = meta-headers, row 1 = real headers, data from row 2
-    const headerRowIdx = (type === 'tasks') ? 1 : 0;
-    const dataStartIdx = (type === 'tasks') ? 2 : 1;
-
-    if (type === 'tasks' && values.length > 1) {
-        // Use row 1 (0-indexed) as headers for tasks (row 2 in Excel = real headers)
-        const realHeaders = values[1];
-        for (let i = dataStartIdx; i < values.length; i++) {
-            if (!values[i] || !values[i][0]) continue; // Skip empty rows
-            const row = {};
-            realHeaders.forEach((h, j) => {
-                row[h] = values[i][j] || '';
-            });
-            rows.push(row);
-        }
-    } else {
-        // For non-tasks sheets: row 0 = headers, data starts at row 1
-        for (let i = 1; i < values.length; i++) {
-            if (!values[i] || !values[i][0]) continue;
-            const row = {};
-            headers.forEach((h, j) => {
-                row[h] = values[i][j] || '';
-            });
-            rows.push(row);
-        }
-    }
-
-    return rows;
+function mapJobs(rows) {
+    return rows.map(r => ({
+        'Job nr': r.JobNr || r.Id,
+        'job modtaget': r.ReceivedDate,
+        'Beskrivelse': r.Description,
+        'Kunde': r.CustomerName || r.CustomerId,
+        '_raw': r
+    }));
 }
 
-async function addExcelRow(type, values) {
-    const cfg = EXCEL_ITEMS[type];
-    const data = await gGet(`https://graph.microsoft.com/v1.0/drives/${DRIVE_ID}/items/${cfg.itemId}/workbook/worksheets('${encodeURIComponent(cfg.sheet)}')/usedRange?$select=values`);
-    const currentValues = data.values || [];
-    const nextRow = currentValues.length + 1;
+function mapLooseGear(rows) {
+    return rows.map(r => ({
+        'Certifikat Nr': r.CertificateNr || r.Id,
+        'Kunde': r.CustomerName || r.CustomerId,
+        'Inspektions dato': r.InspectionDate,
+        'Beskrivelse': r.Description,
+        'Hvem': r.InspectorName || r.EmployeeId,
+        '_raw': r
+    }));
+}
 
-    const colLetters = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T'];
-    const lastCol = colLetters[values.length - 1] || 'Z';
-
-    const url = `https://graph.microsoft.com/v1.0/drives/${DRIVE_ID}/items/${cfg.itemId}/workbook/worksheets('${encodeURIComponent(cfg.sheet)}')/range(address='A${nextRow}:${lastCol}${nextRow}')`;
-    await gPatch(url, { values: [values] });
+function mapMovements(rows) {
+    return rows.map(r => ({
+        id: r.Id,
+        Dato: r.MovementDate,
+        Ind_x002f_ud: r.Direction,
+        Unitid: r.UnitId,
+        Vognmand: r.CarrierName || r.CarrierId,
+        Kunde: r.CustomerName || r.CustomerId,
+        Service: r.ServiceName || r.ServiceId,
+        Hvem: r.EmployeeName || r.EmployeeId,
+        Bogholderikommentar: r.BookkeepingComment,
+        Status: r.Status,
+        Created: r.CreatedAt,
+        Modified: r.UpdatedAt,
+        Attachments: false,
+        '_raw': r
+    }));
 }
 
 // === DATE HELPERS ===
@@ -457,22 +416,19 @@ let loadingCount = 0;
 let loadingTotal = 6;
 
 async function loadData() {
-    // Show dashboard immediately with empty data
     dataLoaded = true;
     loadingCount = 0;
     render();
 
-    // Load each source progressively — render after each one arrives
     const sources = [
-        { name: 'containers', fn: () => readExcelSheet('containers'), apply: d => { D.containers = d; } },
-        { name: 'certificates', fn: () => readExcelSheet('certificates'), apply: d => { D.certificates = d; } },
-        { name: 'tasks', fn: () => readExcelSheet('tasks'), apply: d => { D.tasks = d; } },
-        { name: 'loosegear', fn: () => readExcelSheet('loosegear'), apply: d => { D.loosegear = d; } },
-        { name: 'timeline', fn: () => getList('Truckliste'), apply: d => { D.timeline = d.map(i=>({id:i.id,...i.fields})); } },
-        { name: 'clients', fn: () => getList('Clients'), apply: d => { D.clients = d.map(i=>({id:i.id,...i.fields})); } },
+        { name: 'containers', fn: () => apiGet('containers'), apply: d => { D.containers = mapContainers(d); } },
+        { name: 'certificates', fn: () => apiGet('certificates'), apply: d => { D.certificates = mapCertificates(d); } },
+        { name: 'tasks', fn: () => apiGet('jobs'), apply: d => { D.tasks = mapJobs(d); } },
+        { name: 'loosegear', fn: () => apiGet('loosegear'), apply: d => { D.loosegear = mapLooseGear(d); } },
+        { name: 'timeline', fn: () => apiGet('movements'), apply: d => { D.timeline = mapMovements(d); } },
+        { name: 'clients', fn: () => apiGet('customers'), apply: d => { D.clients = d.map(c => ({id: c.Id, Title: c.Name, Name: c.Name})); } },
     ];
 
-    // Fire all requests in parallel but render as each completes
     const promises = sources.map(src =>
         src.fn().then(data => {
             src.apply(data);
@@ -584,12 +540,11 @@ function applyColFilter(table, col, btn) {
     dd.querySelectorAll('.cfd-list input[type=checkbox]:checked').forEach(cb => checked.add(cb.value));
     const allVals = getColValues(table, col);
     if (checked.size === allVals.length || checked.size === 0) {
-        delete colFilters[fk]; // no filter = show all
+        delete colFilters[fk];
     } else {
         colFilters[fk] = checked;
     }
     closeColFilter();
-    // Re-render the table content only
     const tblMap = {containers:'cTbl',certificates:'ceTbl',tasks:'tTbl',loosegear:'lgTbl',timeline:'tlTbl'};
     const tblFn = {containers:cTbl,certificates:ceTbl,tasks:tTbl,loosegear:lgTbl,timeline:tlTbl};
     const tblId = tblMap[table];
@@ -625,7 +580,6 @@ function sortData(data, table) {
     return data.slice().sort((a, b) => {
         let va = a[col], vb = b[col];
 
-        // Convert to strings for comparison, but handle numbers/dates specially
         const isNum = !isNaN(va) && !isNaN(vb) && va !== '' && vb !== '';
         const isDate = col.includes('Dato') || col.includes('dato') || col.includes('date');
 
@@ -642,7 +596,6 @@ function sortData(data, table) {
             vb = String(vb || '');
         }
 
-        // Empty values always sort to bottom
         let ea = !a[col] || a[col] === '';
         let eb = !b[col] || b[col] === '';
         if (ea && !eb) return 1;
@@ -681,7 +634,6 @@ function doGlobalSearch() {
     const q = (document.getElementById('globalSearch').value || '').toLowerCase();
     if (!q) return;
 
-    // Count matches per section
     const cCount = D.containers.filter(r => JSON.stringify(r).toLowerCase().includes(q)).length;
     const ceCount = D.certificates.filter(r => JSON.stringify(r).toLowerCase().includes(q)).length;
     const tCount = D.tasks.filter(r => JSON.stringify(r).toLowerCase().includes(q)).length;
@@ -691,7 +643,6 @@ function doGlobalSearch() {
 
     if (total === 0) { toast('No results for: '+q,'info'); return; }
 
-    // Navigate to the section with the most hits and pre-fill its search
     const best = [{k:'containers',id:'cSearch',n:cCount},{k:'certificates',id:'ceSearch',n:ceCount},{k:'tasks',id:'tSearch',n:tCount},{k:'loosegear',id:'lgSearch',n:lgCount},{k:'timeline',id:'tlSearch',n:tlCount}].sort((a,b)=>b.n-a.n)[0];
 
     if (best.n > 0) {
@@ -704,9 +655,7 @@ function doGlobalSearch() {
 // === CUSTOMER DROPDOWN HELPER ===
 function getCustomerList() {
     const names = new Set();
-    // From Clients SharePoint list
     D.clients.forEach(c => { const n = c.Title || c.Navn || c.Name || ''; if(n) names.add(n); });
-    // From existing data
     D.containers.forEach(r => { if(r['Firma']) names.add(String(r['Firma'])); if(r['Lejer']) names.add(String(r['Lejer'])); });
     D.certificates.forEach(r => { if(r['Kunde']) names.add(String(r['Kunde'])); });
     D.tasks.forEach(r => { if(r['Kunde']) names.add(String(r['Kunde'])); });
@@ -745,7 +694,6 @@ function confirmNewCust(id) {
     const val = document.getElementById(id + '_newval').value.trim();
     if (!val) return;
     const sel = document.getElementById(id);
-    // Add as new option and select it
     const opt = document.createElement('option');
     opt.value = val; opt.textContent = val;
     sel.insertBefore(opt, sel.querySelector('option:last-child').nextSibling);
@@ -809,8 +757,6 @@ function openContainer(idx, lobenr) {
     page = 'container-detail';
     render();
     window.scrollTo(0,0);
-    // Load images async
-    loadContainerImages();
 }
 
 function rContainerDetail() {
@@ -821,16 +767,16 @@ function rContainerDetail() {
     const fields = [
         {label: 'No. (løbenr.)', val: c['løbenr.']},
         {label: 'Ownership', val: c['Ejerskab']},
-        {label: 'Purchase Date', val: fmtDate(c['Købsdato'])},
+        {label: 'Purchase Date', val: fmtDate(c['購sDato'])},
         {label: 'Type', val: c['Effekt']},
         {label: 'Prefix', val: c['Præfix']},
         {label: 'Serial (958112-5)', val: c['958112-5']},
         {label: 'Company', val: c['Firma']},
-        {label: 'Purchase Invoice', val: c['Købsfaktura - bilagnr']},
-        {label: 'Purchase Price', val: c['Købspris']},
+        {label: 'Purchase Invoice', val: c['Købs faktura - bilagnr']},
+        {label: 'Purchase Price', val: c['Købs pris']},
         {label: 'Transport/Purchase', val: c['Transport/køb']},
-        {label: 'Sale Date', val: fmtDate(c['Salgsdato'])},
-        {label: 'Sale Price', val: c['Salgspris']},
+        {label: 'Sale Date', val: fmtDate(c['Salgs dato'])},
+        {label: 'Sale Price', val: c['Salgs pris']},
         {label: 'Invoice No.', val: c['Fakturanr']},
         {label: 'Rental Date', val: fmtDate(c['Udlej.dato'])},
         {label: 'Return NJ', val: c['Retur NJ']},
@@ -840,7 +786,6 @@ function rContainerDetail() {
         {label: 'Check 01.12.2025', val: c['Tjek 01.12.2025']},
     ];
 
-    // Find related timeline entries for this container
     const prefix = (c['Præfix']||'').toUpperCase();
     const serial = (c['958112-5']||'').replace(/[-\s]/g,'');
     const related = D.timeline.filter(t => {
@@ -859,52 +804,11 @@ function rContainerDetail() {
     </div>
     <h4 style="margin-bottom:8px;font-size:14px;color:var(--text-secondary)">Photos</h4>
     <div id="containerImages" class="detail-images" style="margin-bottom:16px">
-        ${related.some(r => r.Attachments) ? '<div class="img-loading"><div class="spinner"></div>Loading images...</div>' : '<div class="empty-state" style="padding:20px">No photos available</div>'}
+        <div class="empty-state" style="padding:20px">No photos (SQL test version)</div>
     </div>
     ${related.length ? `<h4 style="margin-bottom:8px;font-size:14px;color:var(--text-secondary)">Movement History (${related.length})</h4>
     <div class="table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>In/Out</th><th>Carrier</th><th>Customer</th><th>Service</th><th>Who</th><th>Status</th></tr></thead><tbody>
     ${related.sort((a,b) => new Date(b.Dato||0) - new Date(a.Dato||0)).map(e => `<tr><td>${fmtDate(e.Dato)}</td><td>${isIn(e.Ind_x002f_ud)?'<span class="badge badge-green">IN</span>':isOut(e.Ind_x002f_ud)?'<span class="badge badge-amber">OUT</span>':'<span class="badge badge-gray">${esc(String(e.Ind_x002f_ud||'-'))}</span>'}</td><td>${esc(exName(e.Vognmand))}</td><td>${esc(e.Kunde||'-')}</td><td>${svcVal(e.Service)?'<span class="badge badge-'+svcColor(e.Service)+'">'+esc(svcVal(e.Service))+'</span>':'-'}</td><td>${esc(exName(e.Hvem))}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table></div>` : ''}`;
-}
-
-async function loadContainerImages() {
-    if (!selectedContainer) return;
-    const c = selectedContainer;
-    const prefix = (c['Præfix']||'').toUpperCase();
-    const serial = (c['958112-5']||'').replace(/[-\s]/g,'');
-
-    const related = D.timeline.filter(t => {
-        if (!t.Unitid || !t.Attachments) return false;
-        const uid = String(t.Unitid).toUpperCase().replace(/[-\s]/g,'');
-        return uid.includes(prefix + serial) || uid === prefix + serial;
-    });
-
-    if (!related.length) { const d=document.getElementById('containerImages'); if(d) d.innerHTML='<div class="empty-state" style="padding:20px">No photos available</div>'; return; }
-
-    const imgDiv = document.getElementById('containerImages');
-    if (!imgDiv) return;
-
-    try {
-        const spToken = await getSPToken();
-        const siteUrl = 'https://' + SP_HOST + SP_PATH;
-        const cards = [];
-        for (const entry of related) {
-            try {
-                const url = `${siteUrl}/_api/web/lists/getbytitle('Truckliste')/items(${entry.id})/AttachmentFiles`;
-                const r = await fetch(url, {headers: {'Authorization': 'Bearer ' + spToken, 'Accept': 'application/json;odata=verbose'}});
-                if (!r.ok) continue;
-                const data = await r.json();
-                const files = (data.d?.results || []).filter(f => /\.(jpe?g|png|gif|webp)$/i.test(f.FileName));
-                for (const f of files) {
-                    const binUrl = `${siteUrl}/_api/web/lists/getbytitle('Truckliste')/items(${entry.id})/AttachmentFiles('${encodeURIComponent(f.FileName)}')/$value`;
-                    const imgR = await fetch(binUrl, {headers: {'Authorization': 'Bearer ' + spToken}});
-                    if (!imgR.ok) continue;
-                    const blob = await imgR.blob();
-                    cards.push(`<div class="detail-img-card"><img src="${URL.createObjectURL(blob)}" onclick="showFullImg(this.src)"><div class="img-info">${fmtDate(entry.Dato)} &middot; ${esc(exName(entry.Hvem)||'')}</div></div>`);
-                }
-            } catch(e) { console.warn('Img error item '+entry.id+':', e); }
-        }
-        imgDiv.innerHTML = cards.length ? cards.join('') : '<div class="empty-state" style="padding:20px">No photos available</div>';
-    } catch(e) { console.warn('loadContainerImages error:', e); imgDiv.innerHTML = '<div class="empty-state" style="padding:20px">Could not load images</div>'; }
 }
 
 // === CERTIFICATES ===
@@ -992,7 +896,6 @@ function rCertDetail() {
         {label: 'Order No.', val: c['Ordre.nr. ']},
         {label: 'Who', val: c['Hvem']},
     ];
-    // Find related containers by UNIT
     const unit = String(c['UNIT']||'').toUpperCase().replace(/[-\s]/g,'');
     const relContainers = unit ? D.containers.filter(ct => {
         const cid = ((ct['Præfix']||'') + (ct['958112-5']||'')).toUpperCase().replace(/[-\s]/g,'');
@@ -1057,18 +960,14 @@ function rLgDetail() {
         {label: 'Description', val: l['Beskrivelse']},
         {label: 'Who', val: l['Hvem']},
     ];
-    // Also include any extra keys not already listed
-    const shown = new Set(['Certifikat Nr','Kunde','Inspektions dato','Beskrivelse','Hvem']);
-    Object.keys(l).forEach(k => { if(k && !shown.has(k)) fields.push({label: k, val: l[k]}); });
-
     return `<div class="detail-back" onclick="nav('loosegear')">&#8592; Back to Loosegear</div>
     <div class="detail-header">
-        <div class="detail-icon" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);">&#128631;</div>
-        <div><h1>Loosegear ${esc(l['Certifikat Nr']||'')}</h1>
-        <div class="detail-sub">${esc(l['Beskrivelse']||'')} &middot; ${esc(l['Kunde']||'')}</div></div>
+        <div class="detail-icon" style="background:linear-gradient(135deg,#ec4899,#be185d);">&#128631;</div>
+        <div><h1>${esc(l['Certifikat Nr']||'')}</h1>
+        <div class="detail-sub">${esc(l['Kunde']||'')} &middot; ${fmtDate(l['Inspektions dato'])||''}</div></div>
     </div>
     <div class="detail-grid">
-        ${fields.map(f => { const v=f.val; const empty=!v||v==='-'||v===0; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
+        ${fields.map(f => { const v=f.val; const empty=!v||v==='-'; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
     </div>`;
 }
 
@@ -1076,16 +975,15 @@ function rLgDetail() {
 let selectedTimeline = null;
 function openTimeline(id) {
     selectedTimeline = D.timeline.find(t => String(t.id) === String(id));
-    if (!selectedTimeline) { toast('Entry not found','error'); return; }
+    if (!selectedTimeline) { toast('Timeline entry not found','error'); return; }
     page = 'tl-detail'; render(); window.scrollTo(0,0);
-    loadTimelineImage();
 }
 function rTlDetail() {
     if (!selectedTimeline) return '<div class="empty-state">No entry selected</div>';
     const e = selectedTimeline;
     const fields = [
         {label: 'Date', val: fmtDate(e.Dato)},
-        {label: 'In/Out', val: e.Ind_x002f_ud},
+        {label: 'In/Out', val: isIn(e.Ind_x002f_ud) ? 'In' : isOut(e.Ind_x002f_ud) ? 'Out' : e.Ind_x002f_ud},
         {label: 'Unit ID', val: e.Unitid},
         {label: 'Carrier', val: exName(e.Vognmand)},
         {label: 'Customer', val: e.Kunde},
@@ -1093,28 +991,20 @@ function rTlDetail() {
         {label: 'Who', val: exName(e.Hvem)},
         {label: 'Bookkeeping', val: e.Bogholderikommentar},
         {label: 'Status', val: e.Status},
-        {label: 'Created', val: fmtDate(e.Created)},
-        {label: 'Modified', val: fmtDate(e.Modified)},
     ];
-    const hasPic = e.Attachments;
     return `<div class="detail-back" onclick="nav('timeline')">&#8592; Back to Timeline</div>
     <div class="detail-header">
-        <div class="detail-icon" style="background:linear-gradient(135deg,#22c55e,#16a34a);">&#128337;</div>
-        <div><h1>${esc(e.Unitid||'Movement')} &mdash; ${fmtDate(e.Dato)}</h1>
-        <div class="detail-sub">${isIn(e.Ind_x002f_ud)?'IN':isOut(e.Ind_x002f_ud)?'OUT':esc(String(e.Ind_x002f_ud||''))} &middot; ${esc(e.Kunde||'')} &middot; ${esc(svcVal(e.Service)||'')}</div></div>
+        <div class="detail-icon" style="background:linear-gradient(135deg,#10b981,#059669);">&#9201;</div>
+        <div><h1>${esc(e.Unitid||'')}</h1>
+        <div class="detail-sub">${fmtDate(e.Dato)} &middot; ${isIn(e.Ind_x002f_ud) ? 'Incoming' : isOut(e.Ind_x002f_ud) ? 'Outgoing' : 'Unknown'}</div></div>
     </div>
     <div class="detail-grid" style="margin-bottom:16px">
         ${fields.map(f => { const v=f.val; const empty=!v||v==='-'; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
     </div>
-    <h4 style="margin-bottom:8px;font-size:14px;color:var(--text-secondary)">Photo</h4>
-    <div id="tlDetailImg" class="detail-images">
-        ${hasPic ? '<div class="img-loading"><div class="spinner"></div>Loading image...</div>' : '<div class="empty-state" style="padding:20px">No photo for this entry</div>'}
+    <h4 style="margin-bottom:8px;font-size:14px;color:var(--text-secondary)">Photos</h4>
+    <div id="tlDetailImg" class="detail-images" style="margin-bottom:16px">
+        <div class="empty-state" style="padding:20px">No photos (SQL test version)</div>
     </div>`;
-}
-async function loadTimelineImage() {
-    if (!selectedTimeline || !selectedTimeline.Attachments) return;
-    const e = selectedTimeline;
-    loadItemAttachmentImages(e.id, 'tlDetailImg', fmtDate(e.Dato) + ' &middot; ' + esc(exName(e.Hvem)||''));
 }
 
 // === ADMIN ===
@@ -1153,25 +1043,17 @@ function rNewEntry() {
 async function saveNewContainer(e) {
     e.preventDefault();
     try {
-        await addExcelRow('containers', [
-            document.getElementById('f_lobenr').value,
-            document.getElementById('f_ejer').value,
-            document.getElementById('f_koebsdato').value,
-            document.getElementById('f_effekt').value,
-            document.getElementById('f_prefix').value,
-            document.getElementById('f_serial').value,
-            '',
-            document.getElementById('f_firma').value,
-            '',
-            document.getElementById('f_pris').value,
-            '',
-            document.getElementById('f_udlej').value,
-            '',
-            '',
-            '',
-            '',
-            document.getElementById('f_lejer').value
-        ]);
+        await apiPost('containers', {
+            Prefix: document.getElementById('f_prefix').value,
+            SerialNr: document.getElementById('f_serial').value,
+            OwnerCode: document.getElementById('f_ejer').value,
+            PurchaseDate: document.getElementById('f_koebsdato').value || null,
+            ContainerTypeId: null,
+            PurchasePrice: document.getElementById('f_pris').value || null,
+            CurrentLocation: document.getElementById('f_firma').value,
+            RentalDate: document.getElementById('f_udlej').value || null,
+            Status: 'Active'
+        });
         toast('Container added','success');
         await loadData();
         nav('containers');
@@ -1205,17 +1087,19 @@ function rNewCert() {
 async function saveNewCert(e) {
     e.preventDefault();
     try {
-        await addExcelRow('certificates', [
-            document.getElementById('f_certno').value,
-            getCustVal('f_kunde'),
-            document.getElementById('f_type').value,
-            document.getElementById('f_maaned').value,
-            document.getElementById('f_unit').value,
-            document.getElementById('f_sling').value,
-            document.getElementById('f_sidste4').value,
-            document.getElementById('f_ordrenr').value,
-            document.getElementById('f_hvem').value
-        ]);
+        await apiPost('certificates', {
+            CertificateNr: document.getElementById('f_certno').value,
+            CustomerId: null,
+            CustomerName: getCustVal('f_kunde'),
+            InspectionType: document.getElementById('f_type').value,
+            Month: document.getElementById('f_maaned').value,
+            UnitId: document.getElementById('f_unit').value,
+            SlingNr: document.getElementById('f_sling').value,
+            Last4Years: document.getElementById('f_sidste4').value,
+            OrderNr: document.getElementById('f_ordrenr').value,
+            EmployeeId: null,
+            InspectorName: document.getElementById('f_hvem').value
+        });
         toast('Certificate added','success');
         await loadData();
         nav('certificates');
@@ -1238,12 +1122,13 @@ function rNewTask() {
 async function saveNewTask(e) {
     e.preventDefault();
     try {
-        await addExcelRow('tasks', [
-            document.getElementById('f_jobno').value,
-            document.getElementById('f_jobdat').value,
-            document.getElementById('f_beskr').value,
-            getCustVal('f_jobkunde')
-        ]);
+        await apiPost('jobs', {
+            JobNr: document.getElementById('f_jobno').value,
+            ReceivedDate: document.getElementById('f_jobdat').value || null,
+            Description: document.getElementById('f_beskr').value,
+            CustomerId: null,
+            CustomerName: getCustVal('f_jobkunde')
+        });
         toast('Task added','success');
         await loadData();
         nav('tasks');
@@ -1269,13 +1154,15 @@ function rNewLoosegear() {
 async function saveNewLoosegear(e) {
     e.preventDefault();
     try {
-        await addExcelRow('loosegear', [
-            document.getElementById('f_lgcertno').value,
-            getCustVal('f_lgkunde'),
-            document.getElementById('f_lgdato').value,
-            document.getElementById('f_lgbeskr').value,
-            document.getElementById('f_lghvem').value
-        ]);
+        await apiPost('loosegear', {
+            CertificateNr: document.getElementById('f_lgcertno').value,
+            CustomerId: null,
+            CustomerName: getCustVal('f_lgkunde'),
+            InspectionDate: document.getElementById('f_lgdato').value || null,
+            Description: document.getElementById('f_lgbeskr').value,
+            EmployeeId: null,
+            InspectorName: document.getElementById('f_lghvem').value
+        });
         toast('Loosegear item added','success');
         await loadData();
         nav('loosegear');
