@@ -1,0 +1,15 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "SQL_SERVER": "njco-sql-server.database.windows.net",
+    "SQL_DATABASE": "njco-operations",
+    "SQL_USER": "",
+    "SQL_PASSWORD": "",
+    "SQL_USE_AAD": "true"
+  },
+  "Host": {
+    "CORS": "*"
+  }
+}
