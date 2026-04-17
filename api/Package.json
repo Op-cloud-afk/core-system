@@ -2,7 +2,7 @@
   "name": "njco-core-system-api",
   "version": "1.0.0",
   "description": "Azure Functions API for NJCO Core System (Azure SQL backend)",
-  "main": "src/functions/*.js",
+    "main": "src/Data.js",
   "scripts": {
     "start": "func start",
     "test": "echo \"No tests yet\""
