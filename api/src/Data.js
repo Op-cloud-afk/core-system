@@ -1,5 +1,5 @@
 const { app } = require('@azure/functions');
-const { query } = require('../db');
+const { query } = require('./Db');
 
 // Table name whitelist and their SQL mappings
 const TABLE_MAP = {
@@ -122,7 +122,7 @@ app.http('addData', {
 
             const sqlText = `INSERT INTO ${cfg.table} (${cols.join(', ')}) VALUES (${placeholders.join(', ')})`;
 
-            const { getPool } = require('../db');
+            const { getPool } = require('./Db');
             const pool = await getPool();
             const req = pool.request();
             cols.forEach((c, i) => req.input(`p${i}`, body[c]));
