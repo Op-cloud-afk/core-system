@@ -148,7 +148,7 @@
         .data-table th { position: relative; }
         .data-table tr.clickable-row { cursor: pointer; }
         .data-table tr.clickable-row:hover { background: #e8f0fe; }
-        /* Detail view — compact */
+        /* Detail view â compact */
         .detail-back { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-blue); font-size: 13px; font-weight: 500; cursor: pointer; margin-bottom: 12px; }
         .detail-back:hover { text-decoration: underline; }
         .detail-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
@@ -243,9 +243,9 @@ const ADMIN_EMAILS = [
 
 let msal_app, account, page='dashboard', lang='en';
 let userRole = 'viewer';
-let D = { containers: [], certificates: [], tasks: [], loosegear: [], timeline: [], clients: [] };
+let D = { containers: [], certificates: [], tasks: [], loosegear: [], timeline: [], clients: [], images: [] };
 let dataLoaded = false;
-let sortState = { containers: { col: 'løbenr.', dir: 1 }, certificates: { col: 'Certifikat nr.', dir: 1 }, tasks: { col: 'Job nr', dir: 1 }, loosegear: { col: 'Certifikat Nr', dir: 1 }, timeline: { col: 'Dato', dir: -1 } };
+let sortState = { containers: { col: 'lÃ¸benr.', dir: 1 }, certificates: { col: 'Certifikat nr.', dir: 1 }, tasks: { col: 'Job nr', dir: 1 }, loosegear: { col: 'Certifikat Nr', dir: 1 }, timeline: { col: 'Dato', dir: -1 } };
 let searchState = { cSearch: '', ceSearch: '', tSearch: '', lgSearch: '', tlSearch: '', globalSearch: '' };
 let colFilters = {}; // { "containers|Effekt": Set(['20ft','40ft']), ... }
 let activeFilterDropdown = null; // currently open dropdown element
@@ -253,7 +253,7 @@ let activeFilterDropdown = null; // currently open dropdown element
 // === i18n ===
 const L = {
     en:{dashboard:'Dashboard',containers:'Containers',certificates:'Certificates',tasks:'Tasks',loosegear:'Loosegear',timeline:'Timeline',admin:'Administration',search:'Search...',date:'Date',who:'Who',unitId:'Unit ID',carrier:'Carrier',customer:'Customer',service:'Service',comment:'Comment',status:'Status',bookkeeping:'Bookkeeping',inOut:'In/Out',certNo:'Cert No.',client:'Client',type:'Type',allTypes:'All Types',allStatuses:'All Statuses',exportExcel:'Export CSV',addNew:'+ Add New',back:'Back',noData:'No data available',loading:'Loading data...',approved:'Approved',invoiceNo:'Invoice No.',inspType:'Inspection Type'},
-    da:{dashboard:'Dashboard',containers:'Containere',certificates:'Certifikater',tasks:'Opgaver',loosegear:'Løst Udstyr',timeline:'Tidslinje',admin:'Administration',search:'Søg...',date:'Dato',who:'Hvem',unitId:'Enhed ID',carrier:'Vognmand',customer:'Kunde',service:'Service',comment:'Kommentar',status:'Status',bookkeeping:'Bogholderi',inOut:'Ind/Ud',certNo:'Cert Nr.',client:'Klient',type:'Type',allTypes:'Alle Typer',allStatuses:'Alle Statusser',exportExcel:'Eksporter CSV',addNew:'+ Tilføj Ny',back:'Tilbage',noData:'Ingen data',loading:'Indlæser data...',approved:'Godkendt',invoiceNo:'Faktura Nr.',inspType:'Inspektionstype'}
+    da:{dashboard:'Dashboard',containers:'Containere',certificates:'Certifikater',tasks:'Opgaver',loosegear:'LÃ¸st Udstyr',timeline:'Tidslinje',admin:'Administration',search:'SÃ¸g...',date:'Dato',who:'Hvem',unitId:'Enhed ID',carrier:'Vognmand',customer:'Kunde',service:'Service',comment:'Kommentar',status:'Status',bookkeeping:'Bogholderi',inOut:'Ind/Ud',certNo:'Cert Nr.',client:'Klient',type:'Type',allTypes:'Alle Typer',allStatuses:'Alle Statusser',exportExcel:'Eksporter CSV',addNew:'+ TilfÃ¸j Ny',back:'Tilbage',noData:'Ingen data',loading:'IndlÃ¦ser data...',approved:'Godkendt',invoiceNo:'Faktura Nr.',inspType:'Inspektionstype'}
 };
 const t = k => (L[lang]||L.en)[k]||k;
 
@@ -316,23 +316,23 @@ function lookupName(list, id) {
 
     function mapContainers(rows) {
     return rows.map(r => ({
-        'løbenr.': r.Id,
+        'lÃ¸benr.': r.Id,
         'Ejerskab': r.OwnerCode,
-        'Købsdato': r.PurchaseDate,
+        'KÃ¸bsdato': r.PurchaseDate,
         'Effekt': r.ContainerTypeId,
-        'Præfix': r.Prefix,
+        'PrÃ¦fix': r.Prefix,
         '958112-5': r.SerialNr,
         'Firma': r.CurrentLocation || '',
-        'Købsfaktura - bilagnr': r.PurchaseInvoice,
-        'Købspris': r.PurchasePrice,
-        'Transport/køb': r.TransportCost,
+        'KÃ¸bsfaktura - bilagnr': r.PurchaseInvoice,
+        'KÃ¸bspris': r.PurchasePrice,
+        'Transport/kÃ¸b': r.TransportCost,
         'Salgsdato': r.SaleDate,
         'Salgspris': r.SalePrice,
         'Fakturanr': r.SaleInvoiceNr,
         'Udlej.dato': r.RentalDate,
         'Retur NJ': r.ReturnNr,
         'Lejer': '',
-        'Køber': '',
+        'KÃ¸ber': '',
         'Slingnr.': '',
         'Tjek 01.12.2025': '',
         'Status': r.Status,
@@ -346,7 +346,7 @@ function mapCertificates(rows) {
             CertNr: r.CertNr,
             Container: r.ContainerId,
             Kunde: lookupName(D.clients, r.CustomerId),
-            Inspektør: lookupName(D._employees, r.EmployeeId),
+            InspektÃ¸r: lookupName(D._employees, r.EmployeeId),
             InspektionsType: r.InspectionTypeId,
             Status: r.Status,
             Created: fmtDate(r.CreatedAt),
@@ -372,7 +372,7 @@ function mapLooseGear(rows) {
             id: r.Id,
             CertNr: r.CertNr,
             Kunde: lookupName(D.clients, r.CustomerId),
-            Inspektør: lookupName(D._employees, r.EmployeeId),
+            InspektÃ¸r: lookupName(D._employees, r.EmployeeId),
             Status: r.Status,
             Created: fmtDate(r.CreatedAt),
             '_raw': r
@@ -389,7 +389,7 @@ function mapMovements(rows) {
             Kunde: lookupName(D.clients, r.CustomerId),
             Hvem: lookupName(D._employees, r.EmployeeId),
             Kommentar: r.Comment || '',
-            Bogføring: r.AccountingRef || '',
+            BogfÃ¸ring: r.AccountingRef || '',
             Status: r.Status,
             Created: fmtDate(r.CreatedAt),
             '_raw': r
@@ -437,6 +437,7 @@ async function loadData() {
         { name: 'tasks', fn: () => apiGet('jobs'), apply: d => { D.tasks = mapJobs(d); } },
         { name: 'loosegear', fn: () => apiGet('loosegear'), apply: d => { D.loosegear = mapLooseGear(d); } },
         { name: 'timeline', fn: () => apiGet('movements'), apply: d => { D.timeline = mapMovements(d); } },
+        { name: 'images', fn: () => apiGet('images'), apply: d => { D.images = d; } },
     ];
 
         // Load lookup tables first, then data tables
@@ -464,7 +465,7 @@ async function loadData() {
 
 // === NAV ===
 function nav(p,d) {
-    if(!isAdmin()&&(p==='new-entry'||p==='new-cert'||p==='new-task'||p==='new-loosegear'||p==='admin')){toast('Access denied — admin only','error');return;}
+    if(!isAdmin()&&(p==='new-entry'||p==='new-cert'||p==='new-task'||p==='new-loosegear'||p==='admin')){toast('Access denied â admin only','error');return;}
     page=p;
     document.querySelectorAll('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.page===p));
     render();
@@ -484,6 +485,13 @@ function esc(s){if(!s)return'';const d=document.createElement('div');d.textConte
 function exName(v){if(!v)return'-';if(typeof v==='object'&&v.LookupValue)return v.LookupValue;if(Array.isArray(v))return v.join(', ')||'-';const s=String(v);if(s.includes(';#')){const p=s.split(';#').filter(x=>x&&isNaN(x));return p.join(', ')||s;}return s;}
 function svcVal(s){if(!s)return'';if(Array.isArray(s))return s.join(', ');return String(s);}
 function svcColor(s){if(!s)return'gray';const l=svcVal(s).toLowerCase();if(l.includes('repe'))return'red';if(l.includes('offhire'))return'amber';if(l.includes('vask'))return'blue';if(l.includes('inspek'))return'purple';if(l.includes('udlej'))return'blue';return'gray';}
+function renderPhotos(entityType, entityId) {
+    const photos = D.images.filter(img => img.EntityType === entityType && img.EntityId === entityId);
+    if (!photos.length) return '<div class="empty-state" style="padding:20px">No photos available</div>';
+    return photos.sort((a,b) => (a.SortOrder||0) - (b.SortOrder||0)).map(img =>
+        `<div class="detail-img-card"><img src="${esc(img.BlobUrl)}" alt="${esc(img.FileName||'Photo')}" onclick="window.open('${esc(img.BlobUrl)}','_blank')" loading="lazy"><div class="img-info">${esc(img.FileName||'Photo')}</div></div>`
+    ).join('');
+}
 function isIn(v){return v==='Ind'||v==='1'||v===1;}
 function isOut(v){return v==='Ud'||v==='0'||v===0;}
 function toast(m,type){const c=document.getElementById('toastContainer'),t=document.createElement('div');t.className='toast toast-'+type;t.textContent=m;c.appendChild(t);setTimeout(()=>t.remove(),4000);}
@@ -741,8 +749,8 @@ function rDash() {
         ${recent.map(e=>`<tr class="clickable-row" onclick="openTimeline('${esc(e.id)}')"><td>${fmtDate(e.Dato)}</td><td class="container-number">${esc(e.Unitid||'-')}</td><td>${esc(exName(e.Hvem))}</td><td>${svcVal(e.Service)?`<span class="badge badge-${svcColor(e.Service)}">${esc(svcVal(e.Service))}</span>`:'-'}</td><td><span class="badge ${e.Status==='Lukket'?'badge-green':'badge-amber'}">${esc(e.Status||'Open')}</span></td></tr>`).join('')}</tbody></table></div>`:`<div class="empty-state">${t('noData')}</div>`}
         </div>
         <div class="card"><div class="card-header"><h3>Recent Certificates</h3></div>
-        ${rcerts.length?`<div class="table-wrap"><table class="data-table"><thead><tr><th>Cert Nr</th><th>Kunde</th><th>Måned</th></tr></thead><tbody>
-        ${rcerts.map(c=>`<tr class="clickable-row" onclick="openCert('${esc(c['Certifikat nr.'])}')"><td class="container-number">${esc(c['Certifikat nr.']||'-')}</td><td>${esc(c['Kunde']||'-')}</td><td>${esc(c['Måned']||'-')}</td></tr>`).join('')}</tbody></table></div>`:`<div class="empty-state">${t('noData')}</div>`}
+        ${rcerts.length?`<div class="table-wrap"><table class="data-table"><thead><tr><th>Cert Nr</th><th>Kunde</th><th>MÃ¥ned</th></tr></thead><tbody>
+        ${rcerts.map(c=>`<tr class="clickable-row" onclick="openCert('${esc(c['Certifikat nr.'])}')"><td class="container-number">${esc(c['Certifikat nr.']||'-')}</td><td>${esc(c['Kunde']||'-')}</td><td>${esc(c['MÃ¥ned']||'-')}</td></tr>`).join('')}</tbody></table></div>`:`<div class="empty-state">${t('noData')}</div>`}
         </div>
     </div>`;
 }
@@ -759,15 +767,15 @@ function cTbl(data) {
     const filtered = applyColFilters(data.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q)), 'containers');
 
     if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
-    return `<div class="table-wrap"><table class="data-table"><thead><tr>${thSort('containers','løbenr.','No.')}${thSort('containers','Ejerskab','Ownership')}${thSort('containers','Købsdato','Purchase Date')}${thSort('containers','Effekt','Type')}${thSort('containers','Præfix','ID')}${thSort('containers','Firma','Company')}${thSort('containers','Købspris','Purchase Price')}${thSort('containers','Lejer','Lessee')}${thSort('containers','Udlej.dato','Rental Date')}</tr></thead><tbody>
-    ${filtered.map((e,i)=>`<tr class="clickable-row" onclick="openContainer(${filtered.indexOf(e)}, '${esc(e['løbenr.'])}')"><td>${esc(e['løbenr.']||'-')}</td><td>${esc(e['Ejerskab']||'-')}</td><td>${fmtDate(e['Købsdato'])}</td><td>${esc(e['Effekt']||'-')}</td><td class="container-number">${esc((e['Præfix']||'') + ' ' + (e['958112-5']||''))}</td><td>${esc(e['Firma']||'-')}</td><td>${esc(e['Købspris']||'-')}</td><td>${esc(e['Lejer']||'-')}</td><td>${fmtDate(e['Udlej.dato'])}</td></tr>`).join('')}</tbody></table></div>`;
+    return `<div class="table-wrap"><table class="data-table"><thead><tr>${thSort('containers','lÃ¸benr.','No.')}${thSort('containers','Ejerskab','Ownership')}${thSort('containers','KÃ¸bsdato','Purchase Date')}${thSort('containers','Effekt','Type')}${thSort('containers','PrÃ¦fix','ID')}${thSort('containers','Firma','Company')}${thSort('containers','KÃ¸bspris','Purchase Price')}${thSort('containers','Lejer','Lessee')}${thSort('containers','Udlej.dato','Rental Date')}</tr></thead><tbody>
+    ${filtered.map((e,i)=>`<tr class="clickable-row" onclick="openContainer(${filtered.indexOf(e)}, '${esc(e['lÃ¸benr.'])}')"><td>${esc(e['lÃ¸benr.']||'-')}</td><td>${esc(e['Ejerskab']||'-')}</td><td>${fmtDate(e['KÃ¸bsdato'])}</td><td>${esc(e['Effekt']||'-')}</td><td class="container-number">${esc((e['PrÃ¦fix']||'') + ' ' + (e['958112-5']||''))}</td><td>${esc(e['Firma']||'-')}</td><td>${esc(e['KÃ¸bspris']||'-')}</td><td>${esc(e['Lejer']||'-')}</td><td>${fmtDate(e['Udlej.dato'])}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 // === CONTAINER DETAIL ===
 let selectedContainer = null;
 
 function openContainer(idx, lobenr) {
-    selectedContainer = D.containers.find(c => String(c['løbenr.']) === String(lobenr)) || D.containers[idx];
+    selectedContainer = D.containers.find(c => String(c['lÃ¸benr.']) === String(lobenr)) || D.containers[idx];
     if (!selectedContainer) { toast('Container not found','error'); return; }
     page = 'container-detail';
     render();
@@ -777,31 +785,31 @@ function openContainer(idx, lobenr) {
 function rContainerDetail() {
     if (!selectedContainer) return '<div class="empty-state">No container selected</div>';
     const c = selectedContainer;
-    const unitId = (c['Præfix']||'') + ' ' + (c['958112-5']||'');
+    const unitId = (c['PrÃ¦fix']||'') + ' ' + (c['958112-5']||'');
 
     const fields = [
-        {label: 'No. (løbenr.)', val: c['løbenr.']},
+        {label: 'No. (lÃ¸benr.)', val: c['lÃ¸benr.']},
         {label: 'Ownership', val: c['Ejerskab']},
-        {label: 'Purchase Date', val: fmtDate(c['購sDato'])},
+        {label: 'Purchase Date', val: fmtDate(c['è³¼sDato'])},
         {label: 'Type', val: c['Effekt']},
-        {label: 'Prefix', val: c['Præfix']},
+        {label: 'Prefix', val: c['PrÃ¦fix']},
         {label: 'Serial (958112-5)', val: c['958112-5']},
         {label: 'Company', val: c['Firma']},
-        {label: 'Purchase Invoice', val: c['Købs faktura - bilagnr']},
-        {label: 'Purchase Price', val: c['Købs pris']},
-        {label: 'Transport/Purchase', val: c['Transport/køb']},
+        {label: 'Purchase Invoice', val: c['KÃ¸bs faktura - bilagnr']},
+        {label: 'Purchase Price', val: c['KÃ¸bs pris']},
+        {label: 'Transport/Purchase', val: c['Transport/kÃ¸b']},
         {label: 'Sale Date', val: fmtDate(c['Salgs dato'])},
         {label: 'Sale Price', val: c['Salgs pris']},
         {label: 'Invoice No.', val: c['Fakturanr']},
         {label: 'Rental Date', val: fmtDate(c['Udlej.dato'])},
         {label: 'Return NJ', val: c['Retur NJ']},
         {label: 'Lessee', val: c['Lejer']},
-        {label: 'Buyer', val: c['Køber']},
+        {label: 'Buyer', val: c['KÃ¸ber']},
         {label: 'Sling No.', val: c['Slingnr.']},
         {label: 'Check 01.12.2025', val: c['Tjek 01.12.2025']},
     ];
 
-    const prefix = (c['Præfix']||'').toUpperCase();
+    const prefix = (c['PrÃ¦fix']||'').toUpperCase();
     const serial = (c['958112-5']||'').replace(/[-\s]/g,'');
     const related = D.timeline.filter(t => {
         if (!t.Unitid) return false;
@@ -812,14 +820,14 @@ function rContainerDetail() {
     return `<div class="detail-back" onclick="nav('containers')">&#8592; Back to Containers</div>
     <div class="detail-header">
         <div class="detail-icon">&#9744;</div>
-        <div><h1>${esc(unitId)}</h1><div class="detail-sub">Container #${esc(c['løbenr.']||'')} &middot; ${esc(c['Effekt']||'Unknown type')} &middot; ${esc(c['Firma']||'')}</div></div>
+        <div><h1>${esc(unitId)}</h1><div class="detail-sub">Container #${esc(c['lÃ¸benr.']||'')} &middot; ${esc(c['Effekt']||'Unknown type')} &middot; ${esc(c['Firma']||'')}</div></div>
     </div>
     <div class="detail-grid" style="margin-bottom:16px">
         ${fields.map(f => { const v=f.val; const empty=!v||v==='-'||v==='0'||v===0; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
     </div>
     <h4 style="margin-bottom:8px;font-size:14px;color:var(--text-secondary)">Photos</h4>
     <div id="containerImages" class="detail-images" style="margin-bottom:16px">
-        <div class="empty-state" style="padding:20px">No photos (SQL test version)</div>
+        ${renderPhotos('Truckliste', c['l\u00f8benr.'])}
     </div>
     ${related.length ? `<h4 style="margin-bottom:8px;font-size:14px;color:var(--text-secondary)">Movement History (${related.length})</h4>
     <div class="table-wrap"><table class="data-table"><thead><tr><th>Date</th><th>In/Out</th><th>Carrier</th><th>Customer</th><th>Service</th><th>Who</th><th>Status</th></tr></thead><tbody>
@@ -838,8 +846,8 @@ function ceTbl(data) {
     const filtered = applyColFilters(data.filter(r => !q || JSON.stringify(r).toLowerCase().includes(q)), 'certificates');
 
     if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
-    return `<div class="table-wrap"><table class="data-table"><thead><tr>${thSort('certificates','Certifikat nr.','Cert No.')}${thSort('certificates','Kunde','Customer')}${thSort('certificates','Type','Type')}${thSort('certificates','Måned','Month')}${thSort('certificates','UNIT','Unit')}${thSort('certificates','Sling nr.','Sling No.')}${thSort('certificates','Ordre.nr','Order No.')}${thSort('certificates','Hvem','Who')}</tr></thead><tbody>
-    ${filtered.map(c=>`<tr class="clickable-row" onclick="openCert('${esc(c['Certifikat nr.'])}')"><td class="container-number">${esc(c['Certifikat nr.']||'-')}</td><td>${esc(c['Kunde']||'-')}</td><td>${esc(c['Type']||'-')}</td><td>${esc(c['Måned']||'-')}</td><td>${esc(c['UNIT']||'-')}</td><td>${esc(c['Sling nr.']||'-')}</td><td>${esc(c['Ordre.nr']||'-')}</td><td>${esc(c['Hvem']||'-')}</td></tr>`).join('')}</tbody></table></div>`;
+    return `<div class="table-wrap"><table class="data-table"><thead><tr>${thSort('certificates','Certifikat nr.','Cert No.')}${thSort('certificates','Kunde','Customer')}${thSort('certificates','Type','Type')}${thSort('certificates','MÃ¥ned','Month')}${thSort('certificates','UNIT','Unit')}${thSort('certificates','Sling nr.','Sling No.')}${thSort('certificates','Ordre.nr','Order No.')}${thSort('certificates','Hvem','Who')}</tr></thead><tbody>
+    ${filtered.map(c=>`<tr class="clickable-row" onclick="openCert('${esc(c['Certifikat nr.'])}')"><td class="container-number">${esc(c['Certifikat nr.']||'-')}</td><td>${esc(c['Kunde']||'-')}</td><td>${esc(c['Type']||'-')}</td><td>${esc(c['MÃ¥ned']||'-')}</td><td>${esc(c['UNIT']||'-')}</td><td>${esc(c['Sling nr.']||'-')}</td><td>${esc(c['Ordre.nr']||'-')}</td><td>${esc(c['Hvem']||'-')}</td></tr>`).join('')}</tbody></table></div>`;
 }
 
 // === TASKS ===
@@ -904,16 +912,16 @@ function rCertDetail() {
         {label: 'Certificate No.', val: c['Certifikat nr.']},
         {label: 'Customer', val: c['Kunde']},
         {label: 'Type', val: c['Type']},
-        {label: 'Month', val: c['Måned']},
+        {label: 'Month', val: c['MÃ¥ned']},
         {label: 'Unit', val: c['UNIT']},
         {label: 'Sling No.', val: c['Sling nr.']},
-        {label: 'Last 4 Years', val: c['Sidste 4 års ']},
+        {label: 'Last 4 Years', val: c['Sidste 4 Ã¥rs ']},
         {label: 'Order No.', val: c['Ordre.nr. ']},
         {label: 'Who', val: c['Hvem']},
     ];
     const unit = String(c['UNIT']||'').toUpperCase().replace(/[-\s]/g,'');
     const relContainers = unit ? D.containers.filter(ct => {
-        const cid = ((ct['Præfix']||'') + (ct['958112-5']||'')).toUpperCase().replace(/[-\s]/g,'');
+        const cid = ((ct['PrÃ¦fix']||'') + (ct['958112-5']||'')).toUpperCase().replace(/[-\s]/g,'');
         return cid && (cid.includes(unit) || unit.includes(cid));
     }) : [];
 
@@ -921,14 +929,14 @@ function rCertDetail() {
     <div class="detail-header">
         <div class="detail-icon" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9);">&#9873;</div>
         <div><h1>Certificate ${esc(c['Certifikat nr.']||'')}</h1>
-        <div class="detail-sub">${esc(c['Type']||'')} &middot; ${esc(c['Kunde']||'')} &middot; ${esc(c['Måned']||'')}</div></div>
+        <div class="detail-sub">${esc(c['Type']||'')} &middot; ${esc(c['Kunde']||'')} &middot; ${esc(c['MÃ¥ned']||'')}</div></div>
     </div>
     <div class="detail-grid" style="margin-bottom:16px">
         ${fields.map(f => { const v=f.val; const empty=!v||v==='-'; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
     </div>
     ${relContainers.length ? `<h4 style="margin-bottom:8px;font-size:14px;color:var(--text-secondary)">Related Containers</h4>
     <div class="table-wrap"><table class="data-table"><thead><tr><th>No.</th><th>Type</th><th>ID</th><th>Company</th><th>Lessee</th></tr></thead><tbody>
-    ${relContainers.map(e=>`<tr class="clickable-row" onclick="openContainer(0,'${esc(e['løbenr.'])}')"><td>${esc(e['løbenr.']||'-')}</td><td>${esc(e['Effekt']||'-')}</td><td class="container-number">${esc((e['Præfix']||'')+' '+(e['958112-5']||''))}</td><td>${esc(e['Firma']||'-')}</td><td>${esc(e['Lejer']||'-')}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
+    ${relContainers.map(e=>`<tr class="clickable-row" onclick="openContainer(0,'${esc(e['lÃ¸benr.'])}')"><td>${esc(e['lÃ¸benr.']||'-')}</td><td>${esc(e['Effekt']||'-')}</td><td class="container-number">${esc((e['PrÃ¦fix']||'')+' '+(e['958112-5']||''))}</td><td>${esc(e['Firma']||'-')}</td><td>${esc(e['Lejer']||'-')}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
 }
 
 // === TASK DETAIL ===
@@ -1018,7 +1026,7 @@ function rTlDetail() {
     </div>
     <h4 style="margin-bottom:8px;font-size:14px;color:var(--text-secondary)">Photos</h4>
     <div id="tlDetailImg" class="detail-images" style="margin-bottom:16px">
-        <div class="empty-state" style="padding:20px">No photos (SQL test version)</div>
+        ${(function(){ const uid=(e.Unitid||'').toUpperCase().replace(/[-\\s]/g,''); const match=D.containers.find(c=>{ const p=(c['Pr\u00e6fix']||'').toUpperCase(); const s=(c['958112-5']||'').replace(/[-\\s]/g,''); return uid && (uid.includes(p+s) || uid===p+s); }); return match ? renderPhotos('Truckliste', match['l\u00f8benr.']) : '<div class="empty-state" style="padding:20px">No photos available</div>'; })()}
     </div>`;
 }
 
@@ -1168,7 +1176,7 @@ function rNewLoosegear() {
 }
 async function saveNewLoosegear(e) {
     e.preventDefault();
-    try {
+    try {h
         await apiPost('loosegear', {
             CertificateNr: document.getElementById('f_lgcertno').value,
             CustomerId: null,
