@@ -11,7 +11,7 @@ const TABLE_MAP = {
     movements: {
         table: 'Movements',
         columns: '*',
-        orderBy: 'MovementDate DESC'
+        orderBy: 'Dato DESC'
     },
     certificates: {
         table: 'Certificates',
