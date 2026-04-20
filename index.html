@@ -308,7 +308,13 @@ async function apiPost(table, body) {
 function showFullImg(src) { const o=document.createElement('div');o.className='img-overlay';o.onclick=()=>o.remove();o.innerHTML=`<img src="${src}">`;document.body.appendChild(o); }
 
 // === DATA MAPPERS (SQL columns -> Excel-compatible field names) ===
-function mapContainers(rows) {
+function lookupName(list, id) {
+        if (!list || !id) return '';
+        const item = list.find(x => x.Id === id || x.id === id);
+        return item ? (item.Name || item.Title || '') : String(id);
+    }
+
+    function mapContainers(rows) {
     return rows.map(r => ({
         'løbenr.': r.Id,
         'Ejerskab': r.OwnerCode,
@@ -335,57 +341,62 @@ function mapContainers(rows) {
 }
 
 function mapCertificates(rows) {
-    return rows.map(r => ({
-        'Certifikat nr.': r.CertificateNr || r.Id,
-        'Kunde': r.CustomerName || r.CustomerId,
-        'Type': r.InspectionType || r.Type,
-        'Måned': r.Month,
-        'UNIT': r.UnitId,
-        'Sling nr.': r.SlingNr,
-        'Sidste 4 års ': r.Last4Years,
-        'Ordre.nr. ': r.OrderNr,
-        'Hvem': r.InspectorName || r.EmployeeId,
-        '_raw': r
+        return rows.map(r => ({
+            id: r.Id,
+            CertNr: r.CertNr,
+            Container: r.ContainerId,
+            Kunde: lookupName(D.clients, r.CustomerId),
+            Inspektør: lookupName(D._employees, r.EmployeeId),
+            InspektionsType: r.InspectionTypeId,
+            Status: r.Status,
+            Created: fmtDate(r.CreatedAt),
+            '_raw': r
+        }));
     }));
 }
 
 function mapJobs(rows) {
-    return rows.map(r => ({
-        'Job nr': r.JobNr || r.Id,
-        'job modtaget': r.ReceivedDate,
-        'Beskrivelse': r.Description,
-        'Kunde': r.CustomerName || r.CustomerId,
-        '_raw': r
+        return rows.map(r => ({
+            id: r.Id,
+            JobNr: r.JobNr,
+            Modtaget: fmtDate(r.ReceivedDate),
+            Beskrivelse: r.Description || '',
+            Kunde: lookupName(D.clients, r.CustomerId),
+            Status: r.Status,
+            Created: fmtDate(r.CreatedAt),
+            '_raw': r
+        }));
     }));
 }
 
 function mapLooseGear(rows) {
-    return rows.map(r => ({
-        'Certifikat Nr': r.CertificateNr || r.Id,
-        'Kunde': r.CustomerName || r.CustomerId,
-        'Inspektions dato': r.InspectionDate,
-        'Beskrivelse': r.Description,
-        'Hvem': r.InspectorName || r.EmployeeId,
-        '_raw': r
+        return rows.map(r => ({
+            id: r.Id,
+            CertNr: r.CertNr,
+            Kunde: lookupName(D.clients, r.CustomerId),
+            Inspektør: lookupName(D._employees, r.EmployeeId),
+            Status: r.Status,
+            Created: fmtDate(r.CreatedAt),
+            '_raw': r
+        }));
     }));
 }
 
 function mapMovements(rows) {
-    return rows.map(r => ({
-        id: r.Id,
-        Dato: r.MovementDate,
-        Ind_x002f_ud: r.Direction,
-        Unitid: r.UnitId,
-        Vognmand: r.CarrierName || r.CarrierId,
-        Kunde: r.CustomerName || r.CustomerId,
-        Service: r.ServiceName || r.ServiceId,
-        Hvem: r.EmployeeName || r.EmployeeId,
-        Bogholderikommentar: r.BookkeepingComment,
-        Status: r.Status,
-        Created: r.CreatedAt,
-        Modified: r.UpdatedAt,
-        Attachments: false,
-        '_raw': r
+        return rows.map(r => ({
+            id: r.Id,
+            Dato: fmtDate(r.Dato),
+            Ind_x002f_ud: r.Direction,
+            Container: r.ContainerId,
+            Vognmand: lookupName(D._carriers, r.CarrierId),
+            Kunde: lookupName(D.clients, r.CustomerId),
+            Hvem: lookupName(D._employees, r.EmployeeId),
+            Kommentar: r.Comment || '',
+            Bogføring: r.AccountingRef || '',
+            Status: r.Status,
+            Created: fmtDate(r.CreatedAt),
+            '_raw': r
+        }));
     }));
 }
 
@@ -413,7 +424,7 @@ function fmtDate(s) {
 
 // === DATA ===
 let loadingCount = 0;
-let loadingTotal = 6;
+let loadingTotal = 9;
 
 async function loadData() {
     dataLoaded = true;
@@ -421,28 +432,37 @@ async function loadData() {
     render();
 
     const sources = [
+        { name: 'clients', fn: () => apiGet('customers'), apply: d => { D.clients = d.map(c => ({Id: c.Id, id: c.Id, Title: c.Name, Name: c.Name})); } },
+        { name: 'carriers', fn: () => apiGet('carriers'), apply: d => { D._carriers = d; } },
+        { name: 'employees', fn: () => apiGet('employees'), apply: d => { D._employees = d; } },
+        { name: 'containerTypes', fn: () => apiGet('containertypes'), apply: d => { D._containerTypes = d; } },
         { name: 'containers', fn: () => apiGet('containers'), apply: d => { D.containers = mapContainers(d); } },
         { name: 'certificates', fn: () => apiGet('certificates'), apply: d => { D.certificates = mapCertificates(d); } },
         { name: 'tasks', fn: () => apiGet('jobs'), apply: d => { D.tasks = mapJobs(d); } },
         { name: 'loosegear', fn: () => apiGet('loosegear'), apply: d => { D.loosegear = mapLooseGear(d); } },
         { name: 'timeline', fn: () => apiGet('movements'), apply: d => { D.timeline = mapMovements(d); } },
-        { name: 'clients', fn: () => apiGet('customers'), apply: d => { D.clients = d.map(c => ({id: c.Id, Title: c.Name, Name: c.Name})); } },
     ];
 
-    const promises = sources.map(src =>
-        src.fn().then(data => {
-            src.apply(data);
-            loadingCount++;
+        // Load lookup tables first, then data tables
+        const lookupNames = ['clients','carriers','employees','containerTypes'];
+        const lookups = sources.filter(s => lookupNames.includes(s.name));
+        const dataTables = sources.filter(s => !lookupNames.includes(s.name));
+
+        const loadBatch = (batch) => Promise.all(batch.map(src =>
+            src.fn().then(data => {
+                src.apply(data);
+                loadingCount++;
+                render();
+            }).catch(e => {
+                console.warn(src.name + ' error:', e);
+                loadingCount++;
+            })
+        ));
+
+        loadBatch(lookups).then(() => loadBatch(dataTables)).then(() => {
+            toast(`Loaded ${D.containers.length} containers, ${D.certificates.length} certs, ${D.tasks.length} tasks, ${D.loosegear.length} loosegear`,'success');
             render();
-            if (loadingCount === loadingTotal) {
-                toast(`Loaded ${D.containers.length} containers, ${D.certificates.length} certs, ${D.tasks.length} tasks, ${D.loosegear.length} loosegear`,'success');
-            }
-        }).catch(e => {
-            console.warn(src.name + ' error:', e);
-            loadingCount++;
-            if (loadingCount === loadingTotal) render();
-        })
-    );
+        });
 
     await Promise.all(promises);
 }
