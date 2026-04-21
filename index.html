@@ -148,6 +148,8 @@
         .data-table th { position: relative; }
         .data-table tr.clickable-row { cursor: pointer; }
         .data-table tr.clickable-row:hover { background: #e8f0fe; }
+        .data-table tr.incomplete-row { opacity: 0.6; background: #fefce8; }
+        .data-table tr.incomplete-row:hover { opacity: 1; }
         /* Detail view — compact */
         .detail-back { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-blue); font-size: 13px; font-weight: 500; cursor: pointer; margin-bottom: 12px; }
         .detail-back:hover { text-decoration: underline; }
@@ -316,29 +318,36 @@ function cleanName(s) {
 }
 
 function mapContainers(rows) {
-    return rows.map(r => ({
-        'løbenr.': r.Id,
-        'Ejerskab': r.OwnerCode || '',
-        'Købsdato': r.PurchaseDate,
-        'Effekt': r.ContainerTypeName || r.ContainerTypeCode || '',
-        'Præfix': r.Prefix,
-        '958112-5': r.SerialNr,
-        'Firma': cleanName(r.SupplierName) || r.CurrentLocation || '',
-        'Købsfaktura - bilagnr': r.PurchaseInvoice,
-        'Købspris': r.PurchasePrice,
-        'Transport/køb': r.TransportCost,
-        'Salgsdato': r.SaleDate,
-        'Salgspris': r.SalePrice,
-        'Fakturanr': r.SaleInvoiceNr,
-        'Udlej.dato': r.RentalDate,
-        'Retur NJ': r.ReturnNr,
-        'Lejer': '',
-        'Køber': '',
-        'Slingnr.': '',
-        'Tjek 01.12.2025': '',
-        'Status': r.Status || 'Active',
-        '_raw': r
-    }));
+    return rows.map(r => {
+        // Enrich incomplete containers (no Excel master data) with movement stats
+        const stats = (D._containerStats || {})[r.Id];
+        const hasExcelData = r.OwnerCode || r.ContainerTypeName || r.PurchaseDate;
+        return {
+            'løbenr.': r.Id,
+            'Ejerskab': r.OwnerCode || '',
+            'Købsdato': r.PurchaseDate,
+            'Effekt': r.ContainerTypeName || r.ContainerTypeCode || '',
+            'Præfix': r.Prefix,
+            '958112-5': r.SerialNr,
+            'Firma': cleanName(r.SupplierName) || r.CurrentLocation || (stats ? cleanName(stats.LastCustomer) : '') || '',
+            'Købsfaktura - bilagnr': r.PurchaseInvoice,
+            'Købspris': r.PurchasePrice,
+            'Transport/køb': r.TransportCost,
+            'Salgsdato': r.SaleDate,
+            'Salgspris': r.SalePrice,
+            'Fakturanr': r.SaleInvoiceNr,
+            'Udlej.dato': r.RentalDate,
+            'Retur NJ': r.ReturnNr,
+            'Lejer': !hasExcelData && stats ? cleanName(stats.LastCustomer) : '',
+            'Køber': '',
+            'Slingnr.': '',
+            'Tjek 01.12.2025': '',
+            'Status': r.Status || 'Active',
+            '_hasExcelData': hasExcelData,
+            '_stats': stats || null,
+            '_raw': r
+        };
+    });
 }
 
 function mapCertificates(rows) {
@@ -451,6 +460,7 @@ async function loadData() {
         { name: 'timeline', fn: () => apiGet('movements'), apply: d => { D.timeline = mapMovements(d); } },
         { name: 'clients', fn: () => apiGet('customers'), apply: d => { D.clients = d.map(c => ({id: c.Id, Title: cleanName(c.Name), Name: cleanName(c.Name)})); D._customers = d; } },
         { name: 'images', fn: () => apiGet('images'), apply: d => { D.images = d; } },
+        { name: 'containerstats', fn: () => apiGet('containerstats'), apply: d => { D._containerStats = {}; d.forEach(s => D._containerStats[s.ContainerId] = s); } },
         { name: 'employees', fn: () => apiGet('employees'), apply: d => { D._employees = d; } },
         { name: 'carriers', fn: () => apiGet('carriers'), apply: d => { D._carriers = d; } },
     ];
@@ -464,6 +474,12 @@ async function loadData() {
             render();
             if (loadingCount === loadingTotal) {
                 toast(`Loaded ${D.containers.length} containers, ${D.certificates.length} certs, ${D.timeline.length} movements`,'success');
+                // Diagnostic: log image-container matching stats
+                if (D.images.length && D.containers.length) {
+                    const withContainerId = D.images.filter(i => i.ContainerId != null);
+                    const containerIds = new Set(withContainerId.map(i => String(i.ContainerId)));
+                    console.log(`[Core System] Image diagnostics: ${D.images.length} total images, ${withContainerId.length} resolved to containers, ${containerIds.size} unique containers with photos`);
+                }
             }
         }).catch(e => {
             console.warn(src.name + ' error:', e);
@@ -498,9 +514,27 @@ function exName(v){if(!v)return'-';if(typeof v==='object'&&v.LookupValue)return 
 function svcVal(s){if(!s)return'';if(Array.isArray(s))return s.join(', ');return String(s);}
 function svcColor(s){if(!s)return'gray';const l=svcVal(s).toLowerCase();if(l.includes('repe'))return'red';if(l.includes('offhire'))return'amber';if(l.includes('vask'))return'blue';if(l.includes('inspek'))return'purple';if(l.includes('udlej'))return'blue';return'gray';}
 function renderPhotos(entityType, entityId) {
-    const photos = D.images.filter(img => img.EntityType === entityType && img.EntityId === entityId);
+    // Images now have ContainerId resolved by the API (via Movement.SPItemId JOIN)
+    // For Truckliste: match on resolved ContainerId
+    // For Certifikatnumre: match on resolved ContainerId or direct EntityId
+    const eid = String(entityId || '');
+    const photos = D.images.filter(img => {
+        if (entityType === 'Truckliste') {
+            // Photos linked to movements → containers via API JOIN
+            return img.ContainerId != null && String(img.ContainerId) === eid;
+        }
+        if (entityType === 'Certifikatnumre') {
+            // Certificate photos: match ContainerId or direct EntityId for cert detail view
+            if (img.EntityType !== 'Certifikatnumre') return false;
+            return String(img.EntityId) === eid || (img.ContainerId != null && String(img.ContainerId) === eid);
+        }
+        return false;
+    });
     if (!photos.length) return '<div class="empty-state" style="padding:20px">No photos available</div>';
-    return photos.sort((a,b) => (a.SortOrder||0) - (b.SortOrder||0)).map(img =>
+    // Deduplicate by BlobUrl (same photo might link through multiple movements)
+    const seen = new Set();
+    const unique = photos.filter(p => { if (seen.has(p.BlobUrl)) return false; seen.add(p.BlobUrl); return true; });
+    return unique.sort((a,b) => (a.SortOrder||0) - (b.SortOrder||0)).map(img =>
         `<div class="detail-img-card"><img src="${esc(img.BlobUrl)}" alt="${esc(img.FileName||'Photo')}" onclick="window.open('${esc(img.BlobUrl)}','_blank')" loading="lazy"><div class="img-info">${esc(img.FileName||'Photo')}</div></div>`
     ).join('');
 }
@@ -780,7 +814,7 @@ function cTbl(data) {
 
     if(!filtered.length) return `<div class="empty-state">${t('noData')}</div>`;
     return `<div class="table-wrap"><table class="data-table"><thead><tr>${thSort('containers','løbenr.','No.')}${thSort('containers','Ejerskab','Ownership')}${thSort('containers','Købsdato','Purchase Date')}${thSort('containers','Effekt','Type')}${thSort('containers','Præfix','ID')}${thSort('containers','Firma','Company')}${thSort('containers','Købspris','Purchase Price')}${thSort('containers','Lejer','Lessee')}${thSort('containers','Udlej.dato','Rental Date')}</tr></thead><tbody>
-    ${filtered.map((e,i)=>`<tr class="clickable-row" onclick="openContainer(${filtered.indexOf(e)}, '${esc(e['løbenr.'])}')"><td>${esc(e['løbenr.']||'-')}</td><td>${esc(e['Ejerskab']||'-')}</td><td>${fmtDate(e['Købsdato'])}</td><td>${esc(e['Effekt']||'-')}</td><td class="container-number">${esc((e['Præfix']||'') + ' ' + (e['958112-5']||''))}</td><td>${esc(e['Firma']||'-')}</td><td>${esc(e['Købspris']||'-')}</td><td>${esc(e['Lejer']||'-')}</td><td>${fmtDate(e['Udlej.dato'])}</td></tr>`).join('')}</tbody></table></div>`;
+    ${filtered.map((e,i)=>{const noExcel=!e._hasExcelData;const idDisplay=(e['Præfix']||'')+(e['958112-5']?' '+e['958112-5']:'');const displayId=idDisplay.trim()||e._raw.UnitId||'-';return`<tr class="clickable-row${noExcel?' incomplete-row':''}" onclick="openContainer(${filtered.indexOf(e)}, '${esc(e['løbenr.'])}')"><td>${esc(e['løbenr.']||'-')}</td><td>${esc(e['Ejerskab']||'-')}</td><td>${noExcel&&e._stats?fmtDate(e._stats.LastMovementDate):fmtDate(e['Købsdato'])}</td><td>${esc(e['Effekt']||(noExcel?'':''))||'-'}</td><td class="container-number">${esc(displayId)}</td><td>${esc(e['Firma']||'-')}</td><td>${esc(e['Købspris']||'-')}</td><td>${esc(e['Lejer']||'-')}</td><td>${fmtDate(e['Udlej.dato'])}</td></tr>`;}).join('')}</tbody></table></div>`;
 }
 
 // === CONTAINER DETAIL ===
@@ -799,7 +833,8 @@ function rContainerDetail() {
     const c = selectedContainer;
     const unitId = (c['Præfix']||'') + ' ' + (c['958112-5']||'');
 
-    const fields = [
+    const stats = c._stats;
+    const fields = c._hasExcelData ? [
         {label: 'No. (løbenr.)', val: c['løbenr.']},
         {label: 'Ownership', val: c['Ejerskab']},
         {label: 'Purchase Date', val: fmtDate(c['Købsdato'])},
@@ -819,6 +854,19 @@ function rContainerDetail() {
         {label: 'Buyer', val: c['Køber']},
         {label: 'Sling No.', val: c['Slingnr.']},
         {label: 'Check 01.12.2025', val: c['Tjek 01.12.2025']},
+    ] : [
+        // Enriched view for containers without Excel master data
+        {label: 'No. (løbenr.)', val: c['løbenr.']},
+        {label: 'Unit ID', val: c._raw.UnitId},
+        {label: 'Prefix', val: c['Præfix']},
+        {label: 'Serial', val: c['958112-5']},
+        {label: 'Status', val: c['Status']},
+        {label: 'Movements', val: stats ? stats.MovementCount : 0},
+        {label: 'Last Movement', val: stats ? fmtDate(stats.LastMovementDate) : '-'},
+        {label: 'Last Customer', val: stats ? cleanName(stats.LastCustomer) : '-'},
+        {label: 'Last Carrier', val: stats ? cleanName(stats.LastCarrier) : '-'},
+        {label: 'Last Direction', val: stats ? stats.LastDirection : '-'},
+        {label: 'Photos', val: stats ? stats.PhotoCount : 0},
     ];
 
     // Use ContainerId from movements for exact matching (no string guessing)
@@ -828,8 +876,9 @@ function rContainerDetail() {
     return `<div class="detail-back" onclick="nav('containers')">&#8592; Back to Containers</div>
     <div class="detail-header">
         <div class="detail-icon">&#9744;</div>
-        <div><h1>${esc(unitId)}</h1><div class="detail-sub">Container #${esc(c['løbenr.']||'')} &middot; ${esc(c['Effekt']||'Unknown type')} &middot; ${esc(c['Firma']||'')}</div></div>
+        <div><h1>${esc(unitId.trim() || c._raw.UnitId || '')}</h1><div class="detail-sub">Container #${esc(c['løbenr.']||'')} &middot; ${esc(c['Effekt']||'Unknown type')} &middot; ${esc(c['Firma']||'')}</div></div>
     </div>
+    ${!c._hasExcelData ? '<div style="background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#92400e;">This container was not in the Containerliste Excel file. Showing data derived from movement history.</div>' : ''}
     <div class="detail-grid" style="margin-bottom:16px">
         ${fields.map(f => { const v=f.val; const empty=!v||v==='-'||v==='0'||v===0; return `<div class="detail-field"><div class="df-label">${f.label}</div><div class="df-value${empty?' empty':''}">${empty?'N/A':esc(String(v))}</div></div>`; }).join('')}
     </div>
@@ -930,8 +979,8 @@ function rCertDetail() {
         {label: 'Invoice No.', val: c.FakturaNr},
         {label: 'Comment', val: c.Kommentar},
     ];
-    // Find related container by ContainerId (direct FK)
-    const relContainer = c.Container ? D.containers.find(ct => ct['løbenr.'] === c.Container) : null;
+    // Find related container by ContainerId (direct FK, loose comparison for type safety)
+    const relContainer = c.Container ? D.containers.find(ct => String(ct['løbenr.']) === String(c.Container)) : null;
 
     return `<div class="detail-back" onclick="nav('certificates')">&#8592; Back to Certificates</div>
     <div class="detail-header">
